@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHB
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 from add_equipment_dialog import AddEquipmentDialog
+from edit_equipment_dialog import EditEquipmentDialog
 from styles import main_window, sidebar, studios_button, equipment_button, back_button, add_button, table_widget
 
 
@@ -118,14 +119,19 @@ class StudioWindow(QWidget):
         self.layout.addWidget(self.table)
 
     def edit_equipment(self, index):
+        # Получаем данные из строки таблицы
         row = index.row()
-        name = self.table.item(row, 0).text()
-        code = self.table.item(row, 1).text()
-        article = self.table.item(row, 2).text()
-        quantity = self.table.item(row, 3).text()
-        item_type = self.table.item(row, 4).text()
+        name = self.table.item(row, 0).text()  # Наименование
+        code = self.table.item(row, 1).text()  # Код
+        article = self.table.item(row, 2).text()  # Артикул
+        quantity = self.table.item(row, 3).text()  # Количество
+        item_type = self.table.item(row, 4).text()  # Тип оборудования
 
-        dialog = AddEquipmentDialog(self, name, code, article, quantity, item_type)
+        # Создаем диалоговое окно редактирования с переданными значениями
+        dialog = EditEquipmentDialog(parent=self)
+        dialog.set_values(name, code, article, quantity, item_type)
+
+        # Если пользователь нажал "Сохранить", обновляем таблицу
         if dialog.exec_() == QDialog.Accepted:
             self.table.setItem(row, 0, QTableWidgetItem(dialog.name_input.text()))
             self.table.setItem(row, 1, QTableWidgetItem(dialog.code_input.text()))
