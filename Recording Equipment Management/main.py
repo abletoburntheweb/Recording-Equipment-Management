@@ -111,7 +111,27 @@ class StudioWindow(QWidget):
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
+        self.table.doubleClicked.connect(self.edit_equipment)
+
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+
         self.layout.addWidget(self.table)
+
+    def edit_equipment(self, index):
+        row = index.row()
+        name = self.table.item(row, 0).text()
+        code = self.table.item(row, 1).text()
+        article = self.table.item(row, 2).text()
+        quantity = self.table.item(row, 3).text()
+        item_type = self.table.item(row, 4).text()
+
+        dialog = AddEquipmentDialog(self, name, code, article, quantity, item_type)
+        if dialog.exec_() == QDialog.Accepted:
+            self.table.setItem(row, 0, QTableWidgetItem(dialog.name_input.text()))
+            self.table.setItem(row, 1, QTableWidgetItem(dialog.code_input.text()))
+            self.table.setItem(row, 2, QTableWidgetItem(dialog.article_input.text()))
+            self.table.setItem(row, 3, QTableWidgetItem(dialog.quantity_input.text()))
+            self.table.setItem(row, 4, QTableWidgetItem(dialog.type_input.currentText()))
 
     def open_add_equipment_dialog(self):
         dialog = AddEquipmentDialog(self)

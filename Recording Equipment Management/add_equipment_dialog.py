@@ -4,7 +4,7 @@ from styles import add_equipment_dialog
 
 
 class AddEquipmentDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, name="", code="", article="", quantity="", item_type="Микрофон"):
         super().__init__(parent)
         self.setWindowTitle("Добавить оборудование")
         self.setFixedSize(400, 350)
@@ -15,7 +15,7 @@ class AddEquipmentDialog(QDialog):
         self.name_layout = QHBoxLayout()
         self.name_label = QLabel("Наименование:")
         self.name_label.setFont(QFont("Arial", 12))
-        self.name_input = QLineEdit()
+        self.name_input = QLineEdit(name)
         self.name_layout.addWidget(self.name_label)
         self.name_layout.addWidget(self.name_input)
         self.layout.addLayout(self.name_layout)
@@ -23,7 +23,7 @@ class AddEquipmentDialog(QDialog):
         self.code_layout = QHBoxLayout()
         self.code_label = QLabel("Код:")
         self.code_label.setFont(QFont("Arial", 12))
-        self.code_input = QLineEdit()
+        self.code_input = QLineEdit(code)
         self.code_layout.addWidget(self.code_label)
         self.code_layout.addWidget(self.code_input)
         self.layout.addLayout(self.code_layout)
@@ -31,7 +31,7 @@ class AddEquipmentDialog(QDialog):
         self.article_layout = QHBoxLayout()
         self.article_label = QLabel("Артикул:")
         self.article_label.setFont(QFont("Arial", 12))
-        self.article_input = QLineEdit()
+        self.article_input = QLineEdit(article)
         self.article_layout.addWidget(self.article_label)
         self.article_layout.addWidget(self.article_input)
         self.layout.addLayout(self.article_layout)
@@ -39,7 +39,7 @@ class AddEquipmentDialog(QDialog):
         self.quantity_layout = QHBoxLayout()
         self.quantity_label = QLabel("Кол-во:")
         self.quantity_label.setFont(QFont("Arial", 12))
-        self.quantity_input = QLineEdit()
+        self.quantity_input = QLineEdit(quantity)
         self.quantity_layout.addWidget(self.quantity_label)
         self.quantity_layout.addWidget(self.quantity_input)
         self.layout.addLayout(self.quantity_layout)
@@ -49,6 +49,7 @@ class AddEquipmentDialog(QDialog):
         self.type_label.setFont(QFont("Arial", 12))
         self.type_input = QComboBox()
         self.type_input.addItems(["Микрофон", "Микшер", "Колонка", "Другое"])
+        self.type_input.setCurrentText(item_type)
         self.type_layout.addWidget(self.type_label)
         self.type_layout.addWidget(self.type_input)
         self.layout.addLayout(self.type_layout)
@@ -67,3 +68,8 @@ class AddEquipmentDialog(QDialog):
 
         self.ok_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
+
+
+        if name or code or article or quantity or item_type != "Микрофон":
+            self.setWindowTitle("Редактировать оборудование")
+            self.ok_button.setText("Сохранить")

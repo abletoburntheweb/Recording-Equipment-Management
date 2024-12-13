@@ -138,7 +138,7 @@ def add_equipment_dialog():
         font-size: 14px;
         color: #333;
         padding-right: 10px;
-        width: 120px; /* Устанавливаем фиксированную ширину для меток */
+        width: 120px; 
         text-align: right;
     }
     QLineEdit, QComboBox {
