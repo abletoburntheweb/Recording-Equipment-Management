@@ -1,11 +1,14 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox, QFileDialog, QGroupBox, QRadioButton, QButtonGroup
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+    QLineEdit, QComboBox, QFileDialog, QGroupBox, QRadioButton, QButtonGroup
+)
 from PyQt5.QtGui import QFont
 from styles import add_equipment_dialog
 
 
 class AddEquipmentDialog(QDialog):
-    def __init__(self, parent=None, name="", code="", article="", item_type="Микрофон",
-                 image_path="", brand="Brand A", country="USA", supplier="", status="Новое", serial_number="", color="Red"):
+    def __init__(self, parent=None, name="", code="", serial_number="", item_type="Микрофон",
+                 image_path="", brand="Brand A", country="USA", supplier="", status="Новое", color="Red"):
         super().__init__(parent)
         self.setWindowTitle("Добавить оборудование")
         self.setFixedSize(700, 700)
@@ -25,19 +28,19 @@ class AddEquipmentDialog(QDialog):
         name_layout.addWidget(self.name_input)
         main_layout.addLayout(name_layout)
 
-        code_article_layout = QHBoxLayout()
+        code_serial_layout = QHBoxLayout()
         self.code_label = QLabel("Код:")
         self.code_label.setFont(QFont("Arial", 14))
         self.code_input = QLineEdit(code)
-        code_article_layout.addWidget(self.code_label)
-        code_article_layout.addWidget(self.code_input)
+        code_serial_layout.addWidget(self.code_label)
+        code_serial_layout.addWidget(self.code_input)
 
-        self.article_label = QLabel("Артикул:")
-        self.article_label.setFont(QFont("Arial", 14))
-        self.article_input = QLineEdit(article)
-        code_article_layout.addWidget(self.article_label)
-        code_article_layout.addWidget(self.article_input)
-        main_layout.addLayout(code_article_layout)
+        self.serial_number_label = QLabel("Серийный номер:")
+        self.serial_number_label.setFont(QFont("Arial", 14))
+        self.serial_number_input = QLineEdit(serial_number)
+        code_serial_layout.addWidget(self.serial_number_label)
+        code_serial_layout.addWidget(self.serial_number_input)
+        main_layout.addLayout(code_serial_layout)
 
         quantity_type_layout = QHBoxLayout()
         self.type_label = QLabel("Тип:")
@@ -112,29 +115,21 @@ class AddEquipmentDialog(QDialog):
         brand_country_layout.addWidget(self.country_input)
         additional_layout.addLayout(brand_country_layout)
 
-        supplier_layout = QHBoxLayout()
+        supplier_color_layout = QHBoxLayout()
         self.supplier_label = QLabel("Поставщик:")
         self.supplier_label.setFont(QFont("Arial", 14))
         self.supplier_input = QLineEdit(supplier)
-        supplier_layout.addWidget(self.supplier_label)
-        supplier_layout.addWidget(self.supplier_input)
-        additional_layout.addLayout(supplier_layout)
-
-        serial_color_layout = QHBoxLayout()
-        self.serial_number_label = QLabel("Серийный номер:")
-        self.serial_number_label.setFont(QFont("Arial", 14))
-        self.serial_number_input = QLineEdit(serial_number)
-        serial_color_layout.addWidget(self.serial_number_label)
-        serial_color_layout.addWidget(self.serial_number_input)
+        supplier_color_layout.addWidget(self.supplier_label)
+        supplier_color_layout.addWidget(self.supplier_input)
 
         self.color_label = QLabel("Цвет:")
         self.color_label.setFont(QFont("Arial", 14))
         self.color_input = QComboBox()
         self.color_input.addItems(["Красный", "Синий", "Зеленый", "Желтый"])
         self.color_input.setCurrentText(color)
-        serial_color_layout.addWidget(self.color_label)
-        serial_color_layout.addWidget(self.color_input)
-        additional_layout.addLayout(serial_color_layout)
+        supplier_color_layout.addWidget(self.color_label)
+        supplier_color_layout.addWidget(self.color_input)
+        additional_layout.addLayout(supplier_color_layout)
 
         self.layout.addWidget(additional_group)
 
@@ -153,16 +148,60 @@ class AddEquipmentDialog(QDialog):
         self.ok_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
 
-        if any([name, code, article, item_type != "Микрофон", image_path, brand, country, supplier, status, serial_number, color]):
+        if any([name, code, serial_number, item_type != "Микрофон", image_path, brand, country, supplier, status, color]):
             self.setWindowTitle("Редактировать оборудование")
             self.ok_button.setText("Сохранить")
 
     def select_image(self):
         options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "", "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
+        file_path, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
+                                                   "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
         if file_path:
             self.image_input.setText(file_path)
 
     def get_status(self):
         selected_button = self.status_group.checkedButton()
         return selected_button.text() if selected_button else ""
+
+    def accept(self):
+        is_valid = True
+
+        if not self.name_input.text().strip():
+            self.name_input.setPlaceholderText("Поле не может быть пустым")
+            self.name_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.name_input.setStyleSheet("")
+
+        if not self.code_input.text().strip():
+            self.code_input.setPlaceholderText("Поле не может быть пустым")
+            self.code_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.code_input.setStyleSheet("")
+
+        if not self.serial_number_input.text().strip():
+            self.serial_number_input.setPlaceholderText("Поле не может быть пустым")
+            self.serial_number_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.serial_number_input.setStyleSheet("")
+
+        if not self.type_input.currentText().strip():
+            self.type_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.type_input.setStyleSheet("")
+
+        if not self.get_status():
+            self.new_status.setStyleSheet("color: red;")
+            self.used_status.setStyleSheet("color: red;")
+            self.damaged_status.setStyleSheet("color: red;")
+            is_valid = False
+        else:
+            self.new_status.setStyleSheet("")
+            self.used_status.setStyleSheet("")
+            self.damaged_status.setStyleSheet("")
+
+        if is_valid:
+            super().accept()
