@@ -4,10 +4,12 @@ def main_window():
     QLabel { font-size: 14px; }
     """
 
+
 def sidebar():
     return """
     QFrame { background-color: #333; }
     """
+
 
 def studios_button():
     return """
@@ -28,6 +30,7 @@ def studios_button():
     QPushButton:pressed { background-color: #3e8e41; }
     """
 
+
 def equipment_button():
     return """
     QPushButton { 
@@ -46,6 +49,7 @@ def equipment_button():
     QPushButton:hover { background-color: #777; }
     QPushButton:pressed { background-color: #444; }
     """
+
 
 def back_button():
     return """
@@ -66,6 +70,7 @@ def back_button():
     QPushButton:pressed { background-color: #005A71; }
     """
 
+
 def add_button():
     return """
     QPushButton { 
@@ -82,15 +87,18 @@ def add_button():
     QPushButton:pressed { background-color: #005A71; }
     """
 
+
 def line_edit():
     return """
     QLineEdit { border: 1px solid #ccc; border-radius: 4px; padding: 5px; }
     """
 
+
 def combo_box():
     return """
     QComboBox { border: 1px solid #ccc; border-radius: 4px; padding: 5px; }
     """
+
 
 def table_widget():
     return """
@@ -99,11 +107,13 @@ def table_widget():
     QHeaderView::section { background-color: #f0f0f0; border: 1px solid #ccc; padding: 5px; }
     """
 
+
 def dialog():
     return """
     QDialog { background-color: #ffffff; }
     QDialog QLabel { font-size: 14px; color: #333; }
     """
+
 
 def dialog_button():
     return """
@@ -121,12 +131,14 @@ def dialog_button():
     QPushButton:pressed { background-color: #005A71; }
     """
 
+
 def dialog_cancel_button():
     return """
     QPushButton#cancel_button { background-color: #f44336; }
     QPushButton#cancel_button:hover { background-color: #d32f2f; }
     QPushButton#cancel_button:pressed { background-color: #b71c1c; }
     """
+
 
 def add_equipment_dialog():
     return """
@@ -145,7 +157,7 @@ def add_equipment_dialog():
         border: 1px solid #ccc;
         border-radius: 4px;
         padding: 5px;
-        font-size: 14px;
+        font-size: 18px;
         width: 200px; 
     }
     QPushButton {
@@ -176,5 +188,132 @@ def add_equipment_dialog():
     }
     QPushButton#cancel_button:pressed {
         background-color: #b71c1c;
+    }
+    """
+
+
+def edit_equipment_dialog():
+    return """
+    QDialog {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    QDialog QLabel {
+        font-size: 16px;
+        color: #444;
+        padding-right: 15px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    QLineEdit, QComboBox {
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 18px;
+        background-color: #ffffff;
+        width: 250px;
+    }
+    QLineEdit:focus, QComboBox:focus {
+        border-color: #4CAF50;
+        outline: none;
+    }
+    QDialog QLineEdit#title_field {
+        margin-top: -300px; 
+        font-size: 18px;
+        font-weight: bold;
+        padding: 10px;
+        background-color: #ffffff;
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+    }
+    QPushButton {
+        border: none;
+        padding: 12px 24px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        margin: 6px 4px;
+        cursor: pointer;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    QPushButton:hover {
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    }
+    QPushButton:pressed {
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+    }
+    QPushButton#delete_button {
+        background-color: #f44336;
+        color: white;
+    }
+    QPushButton#delete_button:hover {
+        background-color: #d32f2f;
+    }
+    QPushButton#delete_button:pressed {
+        background-color: #b71c1c;
+    }
+    QPushButton#save_button {
+        background-color: #4CAF50;
+        color: white;
+    }
+    QPushButton#save_button:hover {
+        background-color: #45a049;
+    }
+    QPushButton#save_button:pressed {
+        background-color: #388e3c;
+    }
+    QPushButton#cancel_button {
+        background-color: #008CBA;
+        color: white;
+    }
+    QPushButton#cancel_button:hover {
+        background-color: #006B8E;
+    }
+    QPushButton#cancel_button:pressed {
+        background-color: #005A71;
+    }
+    QPushButton:disabled {
+        background-color: #ccc;
+        color: #666;
+        cursor: not-allowed;
+    }
+    QDialog QTextEdit {
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 14px;
+        background-color: #ffffff;
+    }
+    QDialog QTextEdit:focus {
+        border-color: #4CAF50;
+    }
+    QDialog QScrollBar:vertical {
+        border: none;
+        background: #eaeaea;
+        width: 10px;
+    }
+    QDialog QScrollBar::handle:vertical {
+        background: #ccc;
+        border-radius: 5px;
+    }
+    QDialog QScrollBar::handle:vertical:hover {
+        background: #bbb;
+    }
+    QDialog QLabel#header_label {
+        font-size: 20px;
+        color: #333;
+        margin-bottom: 20px;
+        font-weight: bold;
+        text-align: center;
+    }
+    QRadioButton {
+        font-size: 20px;
+        padding: 8px;
+        spacing: 10px;
     }
     """
