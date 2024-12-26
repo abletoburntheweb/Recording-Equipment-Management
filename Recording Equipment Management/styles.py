@@ -190,7 +190,92 @@ def add_equipment_dialog():
         background-color: #b71c1c;
     }
     """
+def search_box():
+    return """
+    QLineEdit {
+        border: 2px solid #ccc;
+        border-radius: 20px;
+        padding: 10px 15px;
+        font-size: 16px;
+        color: #333;
+        background-color: #f9f9f9;
+        width: 300px;
+        transition: border-color 0.3s ease;
+    }
+    QLineEdit:focus {
+        border-color: #4CAF50;
+        outline: none;
+        background-color: #ffffff;
+    }
 
+    QPushButton {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 20px;
+        transition: background-color 0.3s ease, transform 0.2s;
+    }
+    QPushButton:hover {
+        background-color: #45a049;
+    }
+    QPushButton:pressed {
+        background-color: #388e3c;
+        transform: scale(0.98);
+    }
+
+    QFrame#search_frame {
+        background-color: #ffffff;
+        border: 2px solid #eee;
+        border-radius: 25px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    QLabel {
+        font-size: 18px;
+        color: #333;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+
+    QScrollBar:vertical {
+        border: none;
+        background: #eaeaea;
+        width: 10px;
+    }
+    QScrollBar::handle:vertical {
+        background: #ccc;
+        border-radius: 5px;
+    }
+    QScrollBar::handle:vertical:hover {
+        background: #bbb;
+    }
+    """
+def search_button():
+    return """
+    QPushButton {
+        font-size: 16px;
+        padding: 8px 16px;
+        color: white;
+        background-color: #0078d4;
+        border: none;
+        border-radius: 4px;
+    }
+    QPushButton:hover {
+        background-color: #005a9e;
+    }
+    QPushButton:pressed {
+        background-color: #003f6d;
+    }
+    """
 
 def edit_equipment_dialog():
     return """

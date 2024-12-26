@@ -1,11 +1,11 @@
 import sys
 import psycopg2
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel, \
-    QTableWidget, QTableWidgetItem, QHeaderView, QDialog
+    QTableWidget, QTableWidgetItem, QHeaderView, QDialog, QLineEdit
 from PyQt5.QtCore import Qt
 from add_equipment_dialog import AddEquipmentDialog
 from edit_equipment_dialog import EditEquipmentDialog
-from styles import main_window, add_button, table_widget
+from styles import main_window, add_button, table_widget, search_box, search_button
 from config import DB_CONFIG
 
 
@@ -35,6 +35,19 @@ class Studio(QMainWindow):
         header_layout.addStretch()
         layout.addLayout(header_layout)
 
+        search_layout = QHBoxLayout()
+        self.search_field = QLineEdit()
+        self.search_field.setPlaceholderText("Поиск...")
+        self.search_field.setStyleSheet(search_box())
+        search_layout.addWidget(self.search_field)
+
+        self.search_button = QPushButton("Поиск")
+        self.search_button.setStyleSheet(add_button())
+        self.search_button.clicked.connect(self.search_table)
+        search_layout.addWidget(self.search_button)
+
+        layout.addLayout(search_layout)
+
 
         self.table = QTableWidget()
         self.table.setColumnCount(6)
@@ -52,6 +65,16 @@ class Studio(QMainWindow):
 
         self.load_data_from_db()
 
+    def search_table(self):
+        query = self.search_field.text().lower()
+        for row in range(self.table.rowCount()):
+            match = False
+            for column in range(self.table.columnCount()):
+                item = self.table.item(row, column)
+                if item and query in item.text().lower():
+                    match = True
+                    break
+            self.table.setRowHidden(row, not match)
     def get_db_connection(self):
         try:
             connection = psycopg2.connect(**DB_CONFIG)
@@ -162,15 +185,21 @@ LEFT JOIN brand b ON e.brand_id = b.brand_id;
             cursor = self.connection.cursor()
             query = """
             SELECT 
-    e.equipment_id,           -- ID оборудования
-    e.name AS equipment_name, -- Наименование
-    e.code,                   -- Код
-    e.serial_number,          -- Серийный номер
-    t.type_name,              -- Тип
-    e.condition               -- Состояние
-FROM equipment e
-LEFT JOIN type t ON e.type_id = t.type_id
-LEFT JOIN brand b ON e.brand_id = b.brand_id;
+                e.equipment_id,           -- ID оборудования
+                e.name AS equipment_name, -- Наименование
+                e.code,                   -- Код
+                e.serial_number,          -- Серийный номер
+                t.type_name,              -- Тип
+                c.color_name,             -- Цвет
+                b.brand_name,             -- Бренд
+                s.supplier_name,          -- Поставщик
+                e.condition               -- Состояние
+            FROM equipment e
+            LEFT JOIN type t ON e.type_id = t.type_id
+            LEFT JOIN color c ON e.color_id = c.color_id
+            LEFT JOIN brand b ON e.brand_id = b.brand_id
+            LEFT JOIN supplier s ON e.supplier_id = s.supplier_id
+            WHERE e.equipment_id = %s;
             """
             cursor.execute(query, (equipment_id,))
             data = cursor.fetchone()
@@ -179,55 +208,134 @@ LEFT JOIN brand b ON e.brand_id = b.brand_id;
             if data:
                 dialog = EditEquipmentDialog(
                     name=data[1],  # Наименование
-                    code=data[2],  # Код бренда
+                    code=data[2],  # Код
                     serial_number=data[3],  # Серийный номер
                     equipment_type=data[4],  # Тип оборудования
-                    condition=data[5],  # Состояние
+                    color=data[5],  # Цвет
+                    brand=data[6],  # Бренд
+                    supplier=data[7],  # Поставщик
+                    condition=data[8],  # Состояние
                     parent=self
                 )
-                if dialog.exec_() == QDialog.Accepted:
-                    self.table.setItem(row, 1, QTableWidgetItem(dialog.name))
-                    self.table.setItem(row, 2, QTableWidgetItem(dialog.serial_number))
-                    self.table.setItem(row, 3, QTableWidgetItem(dialog.equipment_type))
-                    self.table.setItem(row, 4, QTableWidgetItem(dialog.condition))
 
-                    self.update_db(equipment_id, dialog.name, dialog.serial_number,
-                                   dialog.equipment_type, dialog.condition, dialog.brand)
+                if dialog.exec_() == QDialog.Accepted:
+                    # Обновляем таблицу
+                    self.table.setItem(row, 1, QTableWidgetItem(dialog.name))
+                    self.table.setItem(row, 2, QTableWidgetItem(dialog.code))
+                    self.table.setItem(row, 3, QTableWidgetItem(dialog.serial_number))
+                    self.table.setItem(row, 4, QTableWidgetItem(dialog.equipment_type))
+                    self.table.setItem(row, 5, QTableWidgetItem(dialog.color))
+                    self.table.setItem(row, 6, QTableWidgetItem(dialog.brand))
+                    self.table.setItem(row, 7, QTableWidgetItem(dialog.supplier))
+                    self.table.setItem(row, 8, QTableWidgetItem(dialog.condition))
+
+                    # Обновляем базу данных
+                    self.update_db(
+                        equipment_id,
+                        dialog.name,
+                        dialog.serial_number,
+                        dialog.equipment_type,
+                        dialog.color,
+                        dialog.brand,
+                        dialog.supplier,
+                        dialog.condition,
+                        dialog.code
+                    )
                     self.load_data_from_db()
 
         except Exception as e:
             print(f"Ошибка загрузки данных для редактирования: {e}")
 
-    def update_db(self, equipment_id, name, serial_number, equipment_type, condition, brand):
+    def update_db(self, equipment_id, name, serial_number, equipment_type, condition, brand, code=None, color=None,
+                  supplier=None):
         if not self.connection:
+            print("Нет соединения с базой данных.")
             return
 
-        if not name or not serial_number or not equipment_type:
+        if not name or not serial_number or not equipment_type or not brand:
             print("Ошибка: Обязательные поля не заполнены.")
             return
 
         try:
             cursor = self.connection.cursor()
+
+            # Проверяем наличие типа
+            cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (equipment_type,))
+            type_id = cursor.fetchone()
+            if not type_id:
+                print(f"Тип '{equipment_type}' не найден в базе данных!")
+                return
+
+            # Проверяем наличие бренда или добавляем его
+            cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (brand,))
+            brand_id = cursor.fetchone()
+            if not brand_id:
+                cursor.execute("INSERT INTO brand (brand_name) VALUES (%s) RETURNING brand_id", (brand,))
+                brand_id = cursor.fetchone()
+                self.connection.commit()
+
+            # Проверяем наличие цвета или добавляем его
+            color_id = None
+            if color:
+                cursor.execute("SELECT color_id FROM color WHERE color_name = %s", (color,))
+                color_id = cursor.fetchone()
+                if not color_id:
+                    cursor.execute("INSERT INTO color (color_name) VALUES (%s) RETURNING color_id", (color,))
+                    color_id = cursor.fetchone()
+                    self.connection.commit()
+
+            # Проверяем наличие поставщика или добавляем его
+            supplier_id = None
+            if supplier:
+                cursor.execute("SELECT supplier_id FROM supplier WHERE supplier_name = %s", (supplier,))
+                supplier_id = cursor.fetchone()
+                if not supplier_id:
+                    cursor.execute("INSERT INTO supplier (supplier_name) VALUES (%s) RETURNING supplier_id",
+                                   (supplier,))
+                    supplier_id = cursor.fetchone()
+                    self.connection.commit()
+
+            # Обновляем оборудование
             cursor.execute(
                 """
                 UPDATE equipment
                 SET 
                     name = %s,
                     serial_number = %s,
-                    type_id = (SELECT type_id FROM type WHERE type_name = %s),
+                    type_id = %s,
                     condition = %s,
-                    brand_id = (SELECT brand_id FROM brand WHERE brand_name = %s)
+                    brand_id = %s,
+                    code = %s,
+                    color_id = %s,
+                    supplier_id = %s
                 WHERE 
                     equipment_id = %s
                 """,
-                (name, serial_number, equipment_type, condition, brand, equipment_id)
+                (
+                    name,
+                    serial_number,
+                    type_id[0],
+                    condition,
+                    brand_id[0],
+                    code,
+                    color_id[0] if color_id else None,
+                    supplier_id[0] if supplier_id else None,
+                    equipment_id,
+                )
             )
             self.connection.commit()
             cursor.close()
+            print(f"Данные оборудования с ID {equipment_id} успешно обновлены.")
         except Exception as e:
             self.connection.rollback()
             print(f"Ошибка обновления данных: {e}")
 
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
