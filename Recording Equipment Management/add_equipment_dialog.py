@@ -2,8 +2,9 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QLineEdit, QComboBox, QFileDialog, QGroupBox, QRadioButton, QButtonGroup
 )
-from PyQt5.QtGui import QFont
 import psycopg2
+import shutil
+import os
 from config import DB_CONFIG
 from styles import add_equipment_dialog
 
@@ -18,6 +19,7 @@ class AddEquipmentDialog(QDialog):
         self.setStyleSheet(add_equipment_dialog())
 
         self.layout = QVBoxLayout(self)
+
 
         main_group = QGroupBox("Основные параметры")
         main_layout = QVBoxLayout()
@@ -45,10 +47,12 @@ class AddEquipmentDialog(QDialog):
         quantity_type_layout = QHBoxLayout()
         self.type_label = QLabel("Тип:")
         self.type_input = QComboBox()
+        self.type_input.setEditable(True)
         self.type_input.addItems(self.fetch_from_db("SELECT type_name FROM type"))
         self.type_input.setCurrentText(item_type)
         quantity_type_layout.addWidget(self.type_label)
         quantity_type_layout.addWidget(self.type_input)
+
 
         self.status_label = QLabel("Состояние:")
         self.status_group = QButtonGroup(self)
@@ -78,6 +82,7 @@ class AddEquipmentDialog(QDialog):
 
         self.layout.addWidget(main_group)
 
+
         additional_group = QGroupBox("Дополнительные параметры")
         additional_layout = QVBoxLayout()
         additional_group.setLayout(additional_layout)
@@ -93,21 +98,25 @@ class AddEquipmentDialog(QDialog):
         image_layout.addWidget(self.image_button)
         additional_layout.addLayout(image_layout)
 
+
         brand_country_layout = QHBoxLayout()
         self.brand_label = QLabel("Бренд:")
         self.brand_input = QComboBox()
+        self.brand_input.setEditable(True)
         self.brand_input.addItems(self.fetch_from_db("SELECT brand_name FROM brand"))
         self.brand_input.setCurrentText(brand)
-        brand_country_layout.addWidget(self.brand_label)
-        brand_country_layout.addWidget(self.brand_input)
 
         self.country_label = QLabel("Страна:")
         self.country_input = QComboBox()
+        self.country_input.setEditable(True)
         self.country_input.addItems(self.fetch_from_db("SELECT DISTINCT country FROM brand"))
         self.country_input.setCurrentText(country)
+        brand_country_layout.addWidget(self.brand_label)
+        brand_country_layout.addWidget(self.brand_input)
         brand_country_layout.addWidget(self.country_label)
         brand_country_layout.addWidget(self.country_input)
         additional_layout.addLayout(brand_country_layout)
+
 
         supplier_color_layout = QHBoxLayout()
         self.supplier_label = QLabel("Поставщик:")
@@ -117,6 +126,7 @@ class AddEquipmentDialog(QDialog):
 
         self.color_label = QLabel("Цвет:")
         self.color_input = QComboBox()
+        self.color_input.setEditable(True)
         self.color_input.addItems(self.fetch_from_db("SELECT color_name FROM color"))
         self.color_input.setCurrentText(color)
         supplier_color_layout.addWidget(self.color_label)
@@ -124,6 +134,7 @@ class AddEquipmentDialog(QDialog):
         additional_layout.addLayout(supplier_color_layout)
 
         self.layout.addWidget(additional_group)
+
 
         button_layout = QHBoxLayout()
         self.cancel_button = QPushButton("Отмена")
@@ -137,7 +148,8 @@ class AddEquipmentDialog(QDialog):
 
         self.layout.addLayout(button_layout)
 
-        self.ok_button.clicked.connect(self.accept)
+
+        self.ok_button.clicked.connect(self.save_equipment)
         self.cancel_button.clicked.connect(self.reject)
 
         if any([name, code, serial_number, item_type, image_path, brand, country, supplier, status, color]):
@@ -172,4 +184,142 @@ class AddEquipmentDialog(QDialog):
         file_path, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
                                                    "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
         if file_path:
-            self.image_input.setText(file_path)
+
+            images_dir = os.path.join(os.getcwd(), "images")
+            file_name = os.path.basename(file_path)
+            destination_path = os.path.join(images_dir, file_name)
+
+            try:
+
+                shutil.copy(file_path, destination_path)
+                self.image_input.setText(destination_path)
+                print(f"Файл скопирован в {destination_path}")
+            except Exception as e:
+                print(f"Ошибка при копировании файла: {e}")
+
+    def save_equipment(self):
+        is_valid = True
+
+        if not self.name_input.text().strip():
+            self.name_input.setPlaceholderText("Поле не может быть пустым")
+            self.name_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.name_input.setStyleSheet("")
+
+        if not self.code_input.text().strip():
+            self.code_input.setPlaceholderText("Поле не может быть пустым")
+            self.code_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.code_input.setStyleSheet("")
+
+        if not self.serial_number_input.text().strip():
+            self.serial_number_input.setPlaceholderText("Поле не может быть пустым")
+            self.serial_number_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.serial_number_input.setStyleSheet("")
+
+        if not self.type_input.currentText().strip():
+            self.type_input.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.type_input.setStyleSheet("")
+
+
+        if not self.get_status():
+            self.new_status.setStyleSheet("color: red;")
+            self.used_status.setStyleSheet("color: red;")
+            self.damaged_status.setStyleSheet("color: red;")
+            is_valid = False
+        else:
+            self.new_status.setStyleSheet("")
+            self.used_status.setStyleSheet("")
+            self.damaged_status.setStyleSheet("")
+
+        image_path = self.image_input.text().strip()
+        if image_path:
+            if not os.path.exists(image_path):
+                self.image_input.setStyleSheet("border: 1px solid red;")
+                print("Файл изображения не существует.")
+                is_valid = False
+            else:
+                valid_extensions = (".png", ".jpg", ".jpeg", ".bmp")
+                if not image_path.lower().endswith(valid_extensions):
+                    self.image_input.setStyleSheet("border: 1px solid red;")
+                    print("Файл изображения имеет недопустимый формат.")
+                    is_valid = False
+                else:
+                    self.image_input.setStyleSheet("")
+        else:
+            self.image_input.setStyleSheet("border: 1px solid red;")
+            print("Изображение не выбрано.")
+            is_valid = False
+
+        if not is_valid:
+            print("Обязательные поля не заполнены. Добавление не выполнено.")
+            return
+
+        self.accept()
+
+    def add_country_to_brand(self, country):
+        query = "INSERT INTO brand (country) VALUES (%s) ON CONFLICT DO NOTHING"
+        conn = None
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            with conn.cursor() as cur:
+                cur.execute(query, (country,))
+                conn.commit()
+        except Exception as e:
+            print(f"Ошибка добавления страны в базу данных: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def is_in_db(self, table, column, value):
+        query = f"SELECT COUNT(*) FROM {table} WHERE {column} = %s"
+        conn = None
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            with conn.cursor() as cur:
+                cur.execute(query, (value,))
+                return cur.fetchone()[0] > 0
+        except Exception as e:
+            print(f"Ошибка проверки в базе данных: {e}")
+            return False
+        finally:
+            if conn:
+                conn.close()
+
+    def update_country_field(self, brand_name):
+        query = "SELECT country FROM brand WHERE brand_name = %s"
+        conn = None
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            with conn.cursor() as cur:
+                cur.execute(query, (brand_name,))
+                result = cur.fetchone()
+                if result and result[0]:
+                    current_country = self.country_input.currentText()
+                    if current_country != result[0]:
+                        self.country_input.setCurrentText(result[0])
+        except Exception as e:
+            print(f"Ошибка обновления поля 'Страна': {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def add_to_db(self, table, column, value):
+        query = f"INSERT INTO {table} ({column}) VALUES (%s)"
+        conn = None
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            with conn.cursor() as cur:
+                cur.execute(query, (value,))
+                conn.commit()
+        except Exception as e:
+            print(f"Ошибка добавления в базу данных: {e}")
+        finally:
+            if conn:
+                conn.close()

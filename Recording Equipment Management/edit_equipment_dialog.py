@@ -1,6 +1,8 @@
+import os
+
 from PyQt5.QtWidgets import (QDialog, QLabel, QLineEdit, QComboBox, QTextEdit, QPushButton, QVBoxLayout,
                              QHBoxLayout, QGridLayout, QRadioButton, QMessageBox, QButtonGroup)
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
 import styles
 
@@ -79,7 +81,7 @@ class EditEquipmentDialog(QDialog):
             self.name = self.title.text()
             self.brand = self.brand_combobox.currentText()
             self.country = self.country_combobox.currentText()
-            self.supplier = self.supplier_field.text()
+            self.supplier = self.supplier_field.currentText()
 
             if self.new_condition.isChecked():
                 self.condition = "Новое"
@@ -157,7 +159,7 @@ class EditEquipmentDialog(QDialog):
         self.details_layout.addWidget(self.country_combobox, 2, 3)
 
         self.details_layout.addWidget(QLabel("Поставщик"), 3, 0)
-        self.supplier_field = QLineEdit(self.supplier)
+        self.supplier_field = QComboBox()
         self.details_layout.addWidget(self.supplier_field, 3, 1)
 
         self.details_layout.addWidget(QLabel("Состояние"), 3, 2)
@@ -197,23 +199,47 @@ class EditEquipmentDialog(QDialog):
         self.load_data_from_db()
 
     def load_data_from_db(self):
-
         try:
             connection = self.parent().connection
             cursor = connection.cursor()
 
 
             cursor.execute("SELECT type_name FROM type")
-            types = [row[0] for row in cursor.fetchall() if row[0]]
-            self.type_combobox.addItems(types)
+            self.type_combobox.addItems([row[0] for row in cursor.fetchall()])
+
 
             cursor.execute("SELECT color_name FROM color")
-            colors = [row[0] for row in cursor.fetchall()]
-            self.color_combobox.addItems(colors)
+            self.color_combobox.addItems([row[0] for row in cursor.fetchall()])
+
 
             cursor.execute("SELECT brand_name FROM brand")
-            brands = [row[0] for row in cursor.fetchall()]
-            self.brand_combobox.addItems(brands)
+            self.brand_combobox.addItems([row[0] for row in cursor.fetchall()])
+
+
+            if self.brand:
+                self.brand_combobox.setCurrentText(self.brand)
+
+
+            cursor.execute("SELECT supplier_name FROM supplier")
+            self.supplier_field.addItems([row[0] for row in cursor.fetchall()])
+
+
+            if self.supplier:
+                self.supplier_field.setCurrentText(self.supplier)
+
+
+            cursor.execute("SELECT image_path FROM equipment WHERE serial_number = %s", (self.serial_number,))
+            result = cursor.fetchone()
+            if result:
+                image_path = os.path.join("images", result[0])
+                if os.path.exists(image_path):
+                    pixmap = QPixmap(image_path)
+                    self.image_label.setPixmap(
+                        pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                else:
+                    print(f"Файл изображения не найден: {image_path}")
+            else:
+                print("Изображение не указано в базе данных.")
 
             cursor.close()
         except Exception as e:
@@ -225,15 +251,16 @@ class EditEquipmentDialog(QDialog):
         self.cancel_button.clicked.connect(self.reject)
 
     def delete_equipment(self):
-        reply = QMessageBox.question(
-            self, 'Подтверждение удаления',
-            'Вы уверены, что хотите удалить это оборудование?',
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-        )
+        reply = QMessageBox(self)
+        reply.setWindowTitle("Подтверждение удаления")
+        reply.setText("Вы уверены, что хотите удалить это оборудование?")
+        reply.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        reply.button(QMessageBox.Yes).setText("Да")
+        reply.button(QMessageBox.No).setText("Нет")
+        reply.setDefaultButton(QMessageBox.No)
 
-        if reply == QMessageBox.Yes:
+        if reply.exec() == QMessageBox.Yes:
             try:
-
                 connection = self.parent().connection
                 cursor = connection.cursor()
 
