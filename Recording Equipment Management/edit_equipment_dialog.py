@@ -4,6 +4,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 import styles
 
+
 class EditEquipmentDialog(QDialog):
     def __init__(self, name="", brand="", country="", supplier="", condition="", serial_number="",
                  code="", equipment_type="Гитара", color="Красный", parent=None):
@@ -103,7 +104,6 @@ class EditEquipmentDialog(QDialog):
         main_layout = QVBoxLayout(self)
 
         top_layout = QHBoxLayout()
-
         self.image_label = QLabel("Изображение")
         self.image_label.setObjectName("image_label")
         self.image_label.setAlignment(Qt.AlignCenter)
@@ -142,26 +142,18 @@ class EditEquipmentDialog(QDialog):
 
         self.details_layout.addWidget(QLabel("Тип"), 1, 0)
         self.type_combobox = QComboBox()
-        self.type_combobox.addItems(["Гитара", "Бас-гитара", "Ударные", "Микрофон"])
-        self.type_combobox.setCurrentText(self.equipment_type)
         self.details_layout.addWidget(self.type_combobox, 1, 1)
 
         self.details_layout.addWidget(QLabel("Цвет"), 1, 2)
         self.color_combobox = QComboBox()
-        self.color_combobox.addItems(["Красный", "Синий", "Зеленый", "Чёрный"])
-        self.color_combobox.setCurrentText(self.color)
         self.details_layout.addWidget(self.color_combobox, 1, 3)
 
         self.details_layout.addWidget(QLabel("Бренд"), 2, 0)
         self.brand_combobox = QComboBox()
-        self.brand_combobox.addItems(["Yamaha", "Gibson", "Fender", "Roland"])
-        self.brand_combobox.setCurrentText(self.brand)
         self.details_layout.addWidget(self.brand_combobox, 2, 1)
 
         self.details_layout.addWidget(QLabel("Страна"), 2, 2)
         self.country_combobox = QComboBox()
-        self.country_combobox.addItems(["США", "Япония", "Германия", "Китай"])
-        self.country_combobox.setCurrentText(self.country)
         self.details_layout.addWidget(self.country_combobox, 2, 3)
 
         self.details_layout.addWidget(QLabel("Поставщик"), 3, 0)
@@ -202,6 +194,31 @@ class EditEquipmentDialog(QDialog):
         main_layout.addLayout(middle_layout)
         main_layout.addLayout(bottom_layout)
 
+        self.load_data_from_db()
+
+    def load_data_from_db(self):
+
+        try:
+            connection = self.parent().connection
+            cursor = connection.cursor()
+
+
+            cursor.execute("SELECT type_name FROM type")
+            types = [row[0] for row in cursor.fetchall() if row[0]]
+            self.type_combobox.addItems(types)
+
+            cursor.execute("SELECT color_name FROM color")
+            colors = [row[0] for row in cursor.fetchall()]
+            self.color_combobox.addItems(colors)
+
+            cursor.execute("SELECT brand_name FROM brand")
+            brands = [row[0] for row in cursor.fetchall()]
+            self.brand_combobox.addItems(brands)
+
+            cursor.close()
+        except Exception as e:
+            print(f"Ошибка загрузки данных из базы: {e}")
+
     def connect_buttons(self):
         self.delete_button.clicked.connect(self.delete_equipment)
         self.save_button.clicked.connect(self.save_equipment)
@@ -209,12 +226,30 @@ class EditEquipmentDialog(QDialog):
 
     def delete_equipment(self):
         reply = QMessageBox.question(
-            self, 'Подтверждение удаления', 'Вы уверены, что хотите удалить это оборудование?',
+            self, 'Подтверждение удаления',
+            'Вы уверены, что хотите удалить это оборудование?',
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
+
         if reply == QMessageBox.Yes:
-            self.parent().table.removeRow(self.parent().table.currentRow())
-            self.accept()
+            try:
+
+                connection = self.parent().connection
+                cursor = connection.cursor()
+
+                cursor.execute("DELETE FROM equipment WHERE serial_number = %s", (self.serial_number,))
+                connection.commit()
+                cursor.close()
+
+                print(f"Оборудование с серийным номером {self.serial_number} успешно удалено!")
+                QMessageBox.information(self, "Удаление", "Оборудование успешно удалено.")
+                self.accept()
+                self.load_data_from_db()
+
+            except Exception as e:
+                print(f"Ошибка при удалении оборудования: {e}")
+                QMessageBox.critical(self, "Ошибка",
+                                     "Не удалось удалить оборудование. Проверьте соединение с базой данных.")
 
     def apply_styles(self):
         self.setStyleSheet(styles.edit_equipment_dialog())

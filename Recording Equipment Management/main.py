@@ -35,6 +35,7 @@ class Studio(QMainWindow):
         header_layout.addStretch()
         layout.addLayout(header_layout)
 
+
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(["ID", "Наименование", "Код", "Серийный номер", "Тип", "Состояние"])
@@ -67,14 +68,15 @@ class Studio(QMainWindow):
             cursor = self.connection.cursor()
             query = """
             SELECT 
-                e.name AS equipment_name,  -- Наименование
-                b.brand_name AS code,      -- Код (например, бренд оборудования)
-                e.serial_number,           -- Серийный номер
-                t.type_name,               -- Тип оборудования
-                e.condition                -- Состояние (Новое, Б/У, Поврежденное)
-            FROM equipment e
-            LEFT JOIN type t ON e.type_id = t.type_id
-            LEFT JOIN brand b ON e.brand_id = b.brand_id;
+    e.equipment_id,           -- ID оборудования
+    e.name AS equipment_name, -- Наименование
+    e.code,                   -- Код
+    e.serial_number,          -- Серийный номер
+    t.type_name,              -- Тип
+    e.condition               -- Состояние
+FROM equipment e
+LEFT JOIN type t ON e.type_id = t.type_id
+LEFT JOIN brand b ON e.brand_id = b.brand_id;
             """
             cursor.execute(query)
             rows = cursor.fetchall()
@@ -85,11 +87,12 @@ class Studio(QMainWindow):
                 row_count = self.table.rowCount()
                 self.table.insertRow(row_count)
 
-                self.table.setItem(row_count, 1, QTableWidgetItem(row[0]))
-                self.table.setItem(row_count, 2, QTableWidgetItem(row[1]))
-                self.table.setItem(row_count, 3, QTableWidgetItem(row[2]))
-                self.table.setItem(row_count, 4, QTableWidgetItem(row[3]))
-                self.table.setItem(row_count, 5, QTableWidgetItem(row[4]))
+                self.table.setItem(row_count, 0, QTableWidgetItem(str(row[0])))  # ID
+                self.table.setItem(row_count, 1, QTableWidgetItem(row[1]))      # Наименование
+                self.table.setItem(row_count, 2, QTableWidgetItem(row[2]))      # Код
+                self.table.setItem(row_count, 3, QTableWidgetItem(row[3]))      # Серийный номер
+                self.table.setItem(row_count, 4, QTableWidgetItem(row[4]))      # Тип
+                self.table.setItem(row_count, 5, QTableWidgetItem(row[5]))      # Состояние
 
             cursor.close()
         except Exception as e:
@@ -101,54 +104,73 @@ class Studio(QMainWindow):
             name = dialog.name_input.text()
             code = dialog.code_input.text()
             serial_number = dialog.serial_number_input.text()
-            status = dialog.get_status()
             item_type = dialog.type_input.currentText()
+            status = dialog.get_status()
+
 
             row_count = self.table.rowCount()
             self.table.insertRow(row_count)
-            self.table.setItem(row_count, 0, QTableWidgetItem(name))
-            self.table.setItem(row_count, 1, QTableWidgetItem(code))
-            self.table.setItem(row_count, 2, QTableWidgetItem(serial_number))
-            self.table.setItem(row_count, 3, QTableWidgetItem(item_type))
-            self.table.setItem(row_count, 4, QTableWidgetItem(status))
+            self.table.setItem(row_count, 1, QTableWidgetItem(name))  # Наименование
+            self.table.setItem(row_count, 2, QTableWidgetItem(code))  # Код
+            self.table.setItem(row_count, 3, QTableWidgetItem(serial_number))  # Серийный номер
+            self.table.setItem(row_count, 4, QTableWidgetItem(item_type))  # Тип
+            self.table.setItem(row_count, 5, QTableWidgetItem(status))  # Состояние
 
             self.save_to_db(name, code, serial_number, item_type, status)
+            self.load_data_from_db()
 
-    def save_to_db(self, name, code, serial_number, item_type, status):
+    def save_to_db(self, name, code, serial_number, type_name, condition):
         if not self.connection:
             return
 
         try:
             cursor = self.connection.cursor()
+
+            cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (type_name,))
+            type_id = cursor.fetchone()
+            if not type_id:
+                print(f"Тип оборудования '{type_name}' не найден в базе данных!")
+                return
+
             cursor.execute(
                 """
-                INSERT INTO equipment (name, code, serial_number, equipment_type, condition)
+                INSERT INTO equipment (name, code, serial_number, type_id, condition)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (name, code, serial_number, item_type, status)
+                (name, code, serial_number, type_id[0], condition)
             )
             self.connection.commit()
             cursor.close()
+
+            print("Оборудование успешно добавлено в базу данных.")
+            print(f"Добавлено оборудование: {name}, {code}, {serial_number}, {type_name}, {condition}")
         except Exception as e:
+            self.connection.rollback()
             print(f"Ошибка сохранения данных: {e}")
 
     def edit_equipment(self, index):
         row = index.row()
-        equipment_id = self.table.item(row, 0).text()
+        item = self.table.item(row, 0)
+        if item is None:
+            print(f"Ошибка: Ячейка ID пуста в строке {row}")
+            return
+
+        equipment_id = item.text()
+        print(f"Редактирование оборудования с ID: {equipment_id}")
 
         try:
             cursor = self.connection.cursor()
             query = """
             SELECT 
-                e.name AS equipment_name,  -- Наименование
-                'Новое' AS code,           -- Код
-                e.serial_number,           -- Серийный номер
-                t.type_name,               -- Тип оборудования
-                c.color_name               -- Состояние
-            FROM equipment e
-            LEFT JOIN type t ON e.type_id = t.type_id
-            LEFT JOIN brand b ON e.brand_id = b.brand_id
-            LEFT JOIN color c ON e.color_id = c.color_id;
+    e.equipment_id,           -- ID оборудования
+    e.name AS equipment_name, -- Наименование
+    e.code,                   -- Код
+    e.serial_number,          -- Серийный номер
+    t.type_name,              -- Тип
+    e.condition               -- Состояние
+FROM equipment e
+LEFT JOIN type t ON e.type_id = t.type_id
+LEFT JOIN brand b ON e.brand_id = b.brand_id;
             """
             cursor.execute(query, (equipment_id,))
             data = cursor.fetchone()
@@ -156,30 +178,32 @@ class Studio(QMainWindow):
 
             if data:
                 dialog = EditEquipmentDialog(
-                    name=data[0],
-                    serial_number=data[1],
-                    condition=data[2],
-                    equipment_type=data[3],
-                    brand=data[4],
-                    color=data[5],
-                    supplier=data[6],
+                    name=data[1],  # Наименование
+                    code=data[2],  # Код бренда
+                    serial_number=data[3],  # Серийный номер
+                    equipment_type=data[4],  # Тип оборудования
+                    condition=data[5],  # Состояние
                     parent=self
                 )
                 if dialog.exec_() == QDialog.Accepted:
-                    self.table.setItem(row, 0, QTableWidgetItem(dialog.name))
-                    self.table.setItem(row, 1, QTableWidgetItem(dialog.serial_number))
-                    self.table.setItem(row, 2, QTableWidgetItem(dialog.equipment_type))
-                    self.table.setItem(row, 3, QTableWidgetItem(dialog.condition))
+                    self.table.setItem(row, 1, QTableWidgetItem(dialog.name))
+                    self.table.setItem(row, 2, QTableWidgetItem(dialog.serial_number))
+                    self.table.setItem(row, 3, QTableWidgetItem(dialog.equipment_type))
+                    self.table.setItem(row, 4, QTableWidgetItem(dialog.condition))
 
                     self.update_db(equipment_id, dialog.name, dialog.serial_number,
-                                   dialog.equipment_type, dialog.condition,
-                                   dialog.brand, dialog.color, dialog.supplier)
+                                   dialog.equipment_type, dialog.condition, dialog.brand)
+                    self.load_data_from_db()
 
         except Exception as e:
             print(f"Ошибка загрузки данных для редактирования: {e}")
 
-    def update_db(self, equipment_id, name, serial_number, equipment_type, condition, brand, color, supplier):
+    def update_db(self, equipment_id, name, serial_number, equipment_type, condition, brand):
         if not self.connection:
+            return
+
+        if not name or not serial_number or not equipment_type:
+            print("Ошибка: Обязательные поля не заполнены.")
             return
 
         try:
@@ -192,17 +216,16 @@ class Studio(QMainWindow):
                     serial_number = %s,
                     type_id = (SELECT type_id FROM type WHERE type_name = %s),
                     condition = %s,
-                    brand_id = (SELECT brand_id FROM brand WHERE brand_name = %s),
-                    color_id = (SELECT color_id FROM color WHERE color_name = %s),
-                    supplier_id = (SELECT supplier_id FROM supplier WHERE supplier_name = %s)
+                    brand_id = (SELECT brand_id FROM brand WHERE brand_name = %s)
                 WHERE 
                     equipment_id = %s
                 """,
-                (name, serial_number, equipment_type, condition, brand, color, supplier, equipment_id)
+                (name, serial_number, equipment_type, condition, brand, equipment_id)
             )
             self.connection.commit()
             cursor.close()
         except Exception as e:
+            self.connection.rollback()
             print(f"Ошибка обновления данных: {e}")
 
 

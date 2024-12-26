@@ -3,15 +3,18 @@ from PyQt5.QtWidgets import (
     QLineEdit, QComboBox, QFileDialog, QGroupBox, QRadioButton, QButtonGroup
 )
 from PyQt5.QtGui import QFont
+import psycopg2
+from config import DB_CONFIG
 from styles import add_equipment_dialog
 
 
 class AddEquipmentDialog(QDialog):
-    def __init__(self, parent=None, name="", code="", serial_number="", item_type="Микрофон",
-                 image_path="", brand="Brand A", country="USA", supplier="", status="Новое", color="Red"):
+    def __init__(self, parent=None, name="", code="", serial_number="", item_type="",
+                 image_path="", brand="", country="", supplier="", status="Новое", color=""):
         super().__init__(parent)
         self.setWindowTitle("Добавить оборудование")
         self.setFixedSize(700, 700)
+
         self.setStyleSheet(add_equipment_dialog())
 
         self.layout = QVBoxLayout(self)
@@ -22,7 +25,6 @@ class AddEquipmentDialog(QDialog):
 
         name_layout = QHBoxLayout()
         self.name_label = QLabel("Наименование:")
-        self.name_label.setFont(QFont("Arial", 14))
         self.name_input = QLineEdit(name)
         name_layout.addWidget(self.name_label)
         name_layout.addWidget(self.name_input)
@@ -30,13 +32,11 @@ class AddEquipmentDialog(QDialog):
 
         code_serial_layout = QHBoxLayout()
         self.code_label = QLabel("Код:")
-        self.code_label.setFont(QFont("Arial", 14))
         self.code_input = QLineEdit(code)
         code_serial_layout.addWidget(self.code_label)
         code_serial_layout.addWidget(self.code_input)
 
         self.serial_number_label = QLabel("Серийный номер:")
-        self.serial_number_label.setFont(QFont("Arial", 14))
         self.serial_number_input = QLineEdit(serial_number)
         code_serial_layout.addWidget(self.serial_number_label)
         code_serial_layout.addWidget(self.serial_number_input)
@@ -44,16 +44,13 @@ class AddEquipmentDialog(QDialog):
 
         quantity_type_layout = QHBoxLayout()
         self.type_label = QLabel("Тип:")
-        self.type_label.setFont(QFont("Arial", 14))
         self.type_input = QComboBox()
-        self.type_input.addItems(["Микрофон", "Микшер", "Колонка", "Другое"])
+        self.type_input.addItems(self.fetch_from_db("SELECT type_name FROM type"))
         self.type_input.setCurrentText(item_type)
         quantity_type_layout.addWidget(self.type_label)
         quantity_type_layout.addWidget(self.type_input)
 
         self.status_label = QLabel("Состояние:")
-        self.status_label.setFont(QFont("Arial", 14))
-
         self.status_group = QButtonGroup(self)
         self.new_status = QRadioButton("Новое")
         self.used_status = QRadioButton("Б/У")
@@ -87,7 +84,6 @@ class AddEquipmentDialog(QDialog):
 
         image_layout = QHBoxLayout()
         self.image_label = QLabel("Изображение:")
-        self.image_label.setFont(QFont("Arial", 14))
         self.image_input = QLineEdit(image_path)
         self.image_input.setReadOnly(True)
         self.image_button = QPushButton("Выбрать")
@@ -99,17 +95,15 @@ class AddEquipmentDialog(QDialog):
 
         brand_country_layout = QHBoxLayout()
         self.brand_label = QLabel("Бренд:")
-        self.brand_label.setFont(QFont("Arial", 14))
         self.brand_input = QComboBox()
-        self.brand_input.addItems(["Brand A", "Brand B", "Brand C"])
+        self.brand_input.addItems(self.fetch_from_db("SELECT brand_name FROM brand"))
         self.brand_input.setCurrentText(brand)
         brand_country_layout.addWidget(self.brand_label)
         brand_country_layout.addWidget(self.brand_input)
 
         self.country_label = QLabel("Страна:")
-        self.country_label.setFont(QFont("Arial", 14))
         self.country_input = QComboBox()
-        self.country_input.addItems(["США", "Германия", "Япония", "Китай"])
+        self.country_input.addItems(self.fetch_from_db("SELECT DISTINCT country FROM brand"))
         self.country_input.setCurrentText(country)
         brand_country_layout.addWidget(self.country_label)
         brand_country_layout.addWidget(self.country_input)
@@ -117,15 +111,13 @@ class AddEquipmentDialog(QDialog):
 
         supplier_color_layout = QHBoxLayout()
         self.supplier_label = QLabel("Поставщик:")
-        self.supplier_label.setFont(QFont("Arial", 14))
         self.supplier_input = QLineEdit(supplier)
         supplier_color_layout.addWidget(self.supplier_label)
         supplier_color_layout.addWidget(self.supplier_input)
 
         self.color_label = QLabel("Цвет:")
-        self.color_label.setFont(QFont("Arial", 14))
         self.color_input = QComboBox()
-        self.color_input.addItems(["Красный", "Синий", "Зеленый", "Желтый"])
+        self.color_input.addItems(self.fetch_from_db("SELECT color_name FROM color"))
         self.color_input.setCurrentText(color)
         supplier_color_layout.addWidget(self.color_label)
         supplier_color_layout.addWidget(self.color_input)
@@ -148,9 +140,32 @@ class AddEquipmentDialog(QDialog):
         self.ok_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
 
-        if any([name, code, serial_number, item_type != "Микрофон", image_path, brand, country, supplier, status, color]):
+        if any([name, code, serial_number, item_type, image_path, brand, country, supplier, status, color]):
             self.setWindowTitle("Редактировать оборудование")
             self.ok_button.setText("Сохранить")
+
+    def get_status(self):
+        if self.new_status.isChecked():
+            return "Новое"
+        elif self.used_status.isChecked():
+            return "Б/У"
+        elif self.damaged_status.isChecked():
+            return "Поврежденное"
+        return None
+
+    def fetch_from_db(self, query):
+        conn = None
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            with conn.cursor() as cur:
+                cur.execute(query)
+                return [row[0] for row in cur.fetchall()]
+        except Exception as e:
+            print(f"Ошибка подключения к базе данных: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
 
     def select_image(self):
         options = QFileDialog.Options()
@@ -158,50 +173,3 @@ class AddEquipmentDialog(QDialog):
                                                    "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
         if file_path:
             self.image_input.setText(file_path)
-
-    def get_status(self):
-        selected_button = self.status_group.checkedButton()
-        return selected_button.text() if selected_button else ""
-
-    def accept(self):
-        is_valid = True
-
-        if not self.name_input.text().strip():
-            self.name_input.setPlaceholderText("Поле не может быть пустым")
-            self.name_input.setStyleSheet("border: 1px solid red;")
-            is_valid = False
-        else:
-            self.name_input.setStyleSheet("")
-
-        if not self.code_input.text().strip():
-            self.code_input.setPlaceholderText("Поле не может быть пустым")
-            self.code_input.setStyleSheet("border: 1px solid red;")
-            is_valid = False
-        else:
-            self.code_input.setStyleSheet("")
-
-        if not self.serial_number_input.text().strip():
-            self.serial_number_input.setPlaceholderText("Поле не может быть пустым")
-            self.serial_number_input.setStyleSheet("border: 1px solid red;")
-            is_valid = False
-        else:
-            self.serial_number_input.setStyleSheet("")
-
-        if not self.type_input.currentText().strip():
-            self.type_input.setStyleSheet("border: 1px solid red;")
-            is_valid = False
-        else:
-            self.type_input.setStyleSheet("")
-
-        if not self.get_status():
-            self.new_status.setStyleSheet("color: red;")
-            self.used_status.setStyleSheet("color: red;")
-            self.damaged_status.setStyleSheet("color: red;")
-            is_valid = False
-        else:
-            self.new_status.setStyleSheet("")
-            self.used_status.setStyleSheet("")
-            self.damaged_status.setStyleSheet("")
-
-        if is_valid:
-            super().accept()
