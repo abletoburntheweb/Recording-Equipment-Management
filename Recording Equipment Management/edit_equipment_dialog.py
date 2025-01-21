@@ -1,7 +1,7 @@
 import os
 
 from PyQt5.QtWidgets import (QDialog, QLabel, QLineEdit, QComboBox, QTextEdit, QPushButton, QVBoxLayout,
-                             QHBoxLayout, QGridLayout, QRadioButton, QMessageBox, QButtonGroup)
+                             QHBoxLayout, QGridLayout, QRadioButton, QMessageBox, QButtonGroup, QFileDialog)
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
 import styles
@@ -50,7 +50,6 @@ class EditEquipmentDialog(QDialog):
     def save_equipment(self):
         is_valid = True
 
-        # Проверяем обязательные поля
         if not self.title.text().strip():
             self.title.setPlaceholderText("Поле не может быть пустым")
             self.title.setStyleSheet("border: 1px solid red;")
@@ -79,16 +78,14 @@ class EditEquipmentDialog(QDialog):
             self.type_combobox.setStyleSheet("")
 
         if is_valid:
-            # Присваиваем значения
-            self.name = self.title.text().strip()  # Название
-            self.code = self.code_field.text().strip()  # Код оборудования
-            self.serial_number = self.serial_field.text().strip()  # Серийный номер
-            self.equipment_type = self.type_combobox.currentText().strip()  # Тип оборудования
-            self.color = self.color_combobox.currentText().strip()  # Цвет оборудования
-            self.brand = self.brand_combobox.currentText().strip()  # Бренд оборудования
-            self.supplier = self.supplier_field.currentText().strip()  # Поставщик оборудования
+            self.name = self.title.text().strip()
+            self.code = self.code_field.text().strip()
+            self.serial_number = self.serial_field.text().strip()
+            self.equipment_type = self.type_combobox.currentText().strip()
+            self.color = self.color_combobox.currentText().strip()
+            self.brand = self.brand_combobox.currentText().strip()
+            self.supplier = self.supplier_field.currentText().strip()
 
-            # Определяем состояние
             if self.new_condition.isChecked():
                 self.condition = "Новое"
             elif self.used_condition.isChecked():
@@ -109,11 +106,21 @@ class EditEquipmentDialog(QDialog):
         main_layout = QVBoxLayout(self)
 
         top_layout = QHBoxLayout()
+
         self.image_label = QLabel("Изображение")
         self.image_label.setObjectName("image_label")
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setMinimumSize(300, 300)
         self.image_label.setStyleSheet("border: 1px solid #999; font-size: 18px; color: gray;")
+
+        self.add_image_button = QPushButton("Добавить изображение")
+        self.add_image_button.setObjectName("add_image_button")
+        self.add_image_button.setFixedSize(220, 50)
+
+        image_layout = QVBoxLayout()
+        image_layout.addWidget(self.image_label)
+        image_layout.addWidget(self.add_image_button, alignment=Qt.AlignCenter)
+
 
         title_layout = QVBoxLayout()
         self.title = QLineEdit(self.name)
@@ -123,7 +130,7 @@ class EditEquipmentDialog(QDialog):
         title_layout.addWidget(self.title)
         title_layout.addStretch()
 
-        top_layout.addWidget(self.image_label, 2)
+        top_layout.addLayout(image_layout, 2)
         top_layout.addLayout(title_layout, 3)
 
         middle_layout = QHBoxLayout()
@@ -201,35 +208,33 @@ class EditEquipmentDialog(QDialog):
 
         self.load_data_from_db()
 
+        self.add_image_button.clicked.connect(self.add_image)
+
     def load_data_from_db(self):
         try:
             connection = self.parent().connection
             cursor = connection.cursor()
 
+            cursor.execute("SELECT brand_name, country FROM brand")
+            self.brand_country_map = {row[0]: row[1] for row in cursor.fetchall()}
 
-            cursor.execute("SELECT type_name FROM type")
-            self.type_combobox.addItems([row[0] for row in cursor.fetchall()])
-
-
-            cursor.execute("SELECT color_name FROM color")
-            self.color_combobox.addItems([row[0] for row in cursor.fetchall()])
-
-
-            cursor.execute("SELECT brand_name FROM brand")
-            self.brand_combobox.addItems([row[0] for row in cursor.fetchall()])
-
+            self.brand_combobox.addItems(self.brand_country_map.keys())
 
             if self.brand:
                 self.brand_combobox.setCurrentText(self.brand)
 
+            self.update_country_field(self.brand_combobox.currentText())
+
+            self.brand_combobox.currentTextChanged.connect(self.update_country_field)
+
+            cursor.execute("SELECT type_name FROM type")
+            self.type_combobox.addItems([row[0] for row in cursor.fetchall()])
+
+            cursor.execute("SELECT color_name FROM color")
+            self.color_combobox.addItems([row[0] for row in cursor.fetchall()])
 
             cursor.execute("SELECT supplier_name FROM supplier")
             self.supplier_field.addItems([row[0] for row in cursor.fetchall()])
-
-
-            if self.supplier:
-                self.supplier_field.setCurrentText(self.supplier)
-
 
             cursor.execute("SELECT image_path FROM equipment WHERE serial_number = %s", (self.serial_number,))
             result = cursor.fetchone()
@@ -247,6 +252,22 @@ class EditEquipmentDialog(QDialog):
             cursor.close()
         except Exception as e:
             print(f"Ошибка загрузки данных из базы: {e}")
+
+    def add_image(self):
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
+                                                   "Images (*.png *.xpm *.jpg *.jpeg *.bmp);;All Files (*)",
+                                                   options=options)
+        if file_path:
+            pixmap = QPixmap(file_path)
+            self.image_label.setPixmap(
+                pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
+            print(f"Выбрано изображение: {file_path}")
+    def update_country_field(self, brand_name):
+        country = self.brand_country_map.get(brand_name, "Неизвестно")
+        self.country_combobox.clear()
+        self.country_combobox.addItem(country)
 
     def connect_buttons(self):
         self.delete_button.clicked.connect(self.delete_equipment)

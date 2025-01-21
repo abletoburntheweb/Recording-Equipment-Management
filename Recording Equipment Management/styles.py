@@ -362,6 +362,16 @@ def edit_equipment_dialog():
     QPushButton#cancel_button:pressed {
         background-color: #005A71;
     }
+    QPushButton#add_image_button {
+        background-color: #008CBA;
+        color: white;
+    }
+    QPushButton#add_image_button:hover {
+        background-color: #006B8E;
+    }
+    QPushButton#add_image_button:pressed {
+        background-color: #005A71;
+    }
     QPushButton:disabled {
         background-color: #ccc;
         color: #666;

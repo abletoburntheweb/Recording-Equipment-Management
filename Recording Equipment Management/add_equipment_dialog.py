@@ -17,9 +17,7 @@ class AddEquipmentDialog(QDialog):
         self.setFixedSize(700, 700)
 
         self.setStyleSheet(add_equipment_dialog())
-
         self.layout = QVBoxLayout(self)
-
 
         main_group = QGroupBox("Основные параметры")
         main_layout = QVBoxLayout()
@@ -53,7 +51,6 @@ class AddEquipmentDialog(QDialog):
         quantity_type_layout.addWidget(self.type_label)
         quantity_type_layout.addWidget(self.type_input)
 
-
         self.status_label = QLabel("Состояние:")
         self.status_group = QButtonGroup(self)
         self.new_status = QRadioButton("Новое")
@@ -79,13 +76,12 @@ class AddEquipmentDialog(QDialog):
         quantity_type_layout.addWidget(self.status_label)
         quantity_type_layout.addLayout(status_buttons_layout)
         main_layout.addLayout(quantity_type_layout)
-
         self.layout.addWidget(main_group)
-
 
         additional_group = QGroupBox("Дополнительные параметры")
         additional_layout = QVBoxLayout()
         additional_group.setLayout(additional_layout)
+
 
         image_layout = QHBoxLayout()
         self.image_label = QLabel("Изображение:")
@@ -105,12 +101,13 @@ class AddEquipmentDialog(QDialog):
         self.brand_input.setEditable(True)
         self.brand_input.addItems(self.fetch_from_db("SELECT brand_name FROM brand"))
         self.brand_input.setCurrentText(brand)
+        self.brand_input.currentTextChanged.connect(self.update_country_field)
 
         self.country_label = QLabel("Страна:")
         self.country_input = QComboBox()
         self.country_input.setEditable(True)
-        self.country_input.addItems(self.fetch_from_db("SELECT DISTINCT country FROM brand"))
-        self.country_input.setCurrentText(country)
+        self.update_country_field(self.brand_input.currentText())
+
         brand_country_layout.addWidget(self.brand_label)
         brand_country_layout.addWidget(self.brand_input)
         brand_country_layout.addWidget(self.country_label)
@@ -120,7 +117,10 @@ class AddEquipmentDialog(QDialog):
 
         supplier_color_layout = QHBoxLayout()
         self.supplier_label = QLabel("Поставщик:")
-        self.supplier_input = QLineEdit(supplier)
+        self.supplier_input = QComboBox()
+        self.supplier_input.setEditable(True)
+        self.supplier_input.addItems(self.fetch_from_db("SELECT supplier_name FROM supplier"))
+        self.supplier_input.setCurrentText(supplier)
         supplier_color_layout.addWidget(self.supplier_label)
         supplier_color_layout.addWidget(self.supplier_input)
 
@@ -145,9 +145,7 @@ class AddEquipmentDialog(QDialog):
         button_layout.addWidget(self.cancel_button)
         button_layout.addStretch()
         button_layout.addWidget(self.ok_button)
-
         self.layout.addLayout(button_layout)
-
 
         self.ok_button.clicked.connect(self.save_equipment)
         self.cancel_button.clicked.connect(self.reject)
@@ -227,7 +225,6 @@ class AddEquipmentDialog(QDialog):
         else:
             self.type_input.setStyleSheet("")
 
-
         if not self.get_status():
             self.new_status.setStyleSheet("color: red;")
             self.used_status.setStyleSheet("color: red;")
@@ -253,9 +250,7 @@ class AddEquipmentDialog(QDialog):
                 else:
                     self.image_input.setStyleSheet("")
         else:
-            self.image_input.setStyleSheet("border: 1px solid red;")
-            print("Изображение не выбрано.")
-            is_valid = False
+            self.image_input.setStyleSheet("")
 
         if not is_valid:
             print("Обязательные поля не заполнены. Добавление не выполнено.")
@@ -300,10 +295,9 @@ class AddEquipmentDialog(QDialog):
             with conn.cursor() as cur:
                 cur.execute(query, (brand_name,))
                 result = cur.fetchone()
-                if result and result[0]:
-                    current_country = self.country_input.currentText()
-                    if current_country != result[0]:
-                        self.country_input.setCurrentText(result[0])
+                if result:
+                    self.country_input.clear()
+                    self.country_input.addItem(result[0])
         except Exception as e:
             print(f"Ошибка обновления поля 'Страна': {e}")
         finally:
