@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHB
 from PyQt5.QtCore import Qt
 from add_equipment_dialog import AddEquipmentDialog
 from edit_equipment_dialog import EditEquipmentDialog
+from settings_page import SettingsPage
 from styles import main_window, add_button, table_widget, search_box, search_button
 from config import DB_CONFIG
 
@@ -31,6 +32,11 @@ class Studio(QMainWindow):
         self.add_button.setStyleSheet(add_button())
         self.add_button.clicked.connect(self.open_add_equipment_dialog)
         header_layout.addWidget(self.add_button)
+
+        self.settings_button = QPushButton("Настройки")
+        self.settings_button.setStyleSheet(add_button())
+        self.settings_button.clicked.connect(self.open_settings_page)
+        header_layout.addWidget(self.settings_button)
 
         header_layout.addStretch()
         layout.addLayout(header_layout)
@@ -128,6 +134,9 @@ class Studio(QMainWindow):
         except Exception as e:
             print(f"Ошибка загрузки данных: {e}")
 
+    def open_settings_page(self):
+        settings_dialog = SettingsPage(self)
+        settings_dialog.exec_()
     def open_add_equipment_dialog(self):
         dialog = AddEquipmentDialog(self)
         if dialog.exec_() == QDialog.Accepted:
