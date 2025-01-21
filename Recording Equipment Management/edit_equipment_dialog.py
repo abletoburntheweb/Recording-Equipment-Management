@@ -50,6 +50,7 @@ class EditEquipmentDialog(QDialog):
     def save_equipment(self):
         is_valid = True
 
+        # Проверяем обязательные поля
         if not self.title.text().strip():
             self.title.setPlaceholderText("Поле не может быть пустым")
             self.title.setStyleSheet("border: 1px solid red;")
@@ -78,11 +79,16 @@ class EditEquipmentDialog(QDialog):
             self.type_combobox.setStyleSheet("")
 
         if is_valid:
-            self.name = self.title.text()
-            self.brand = self.brand_combobox.currentText()
-            self.country = self.country_combobox.currentText()
-            self.supplier = self.supplier_field.currentText()
+            # Присваиваем значения
+            self.name = self.title.text().strip()  # Название
+            self.code = self.code_field.text().strip()  # Код оборудования
+            self.serial_number = self.serial_field.text().strip()  # Серийный номер
+            self.equipment_type = self.type_combobox.currentText().strip()  # Тип оборудования
+            self.color = self.color_combobox.currentText().strip()  # Цвет оборудования
+            self.brand = self.brand_combobox.currentText().strip()  # Бренд оборудования
+            self.supplier = self.supplier_field.currentText().strip()  # Поставщик оборудования
 
+            # Определяем состояние
             if self.new_condition.isChecked():
                 self.condition = "Новое"
             elif self.used_condition.isChecked():
@@ -92,13 +98,10 @@ class EditEquipmentDialog(QDialog):
             else:
                 self.condition = ""
 
-            self.equipment_type = self.type_combobox.currentText()
-            self.serial_number = self.serial_field.text()
-            self.code = self.code_field.text()
-            self.color = self.color_combobox.currentText()
-
             print(f"Сохранённое состояние: {self.condition}")
             print(f"Сохранённый тип: {self.equipment_type}")
+            print(f"Сохранённый код: {self.code}")
+            print(f"Сохранённый поставщик: {self.supplier}")
 
             self.accept()
 

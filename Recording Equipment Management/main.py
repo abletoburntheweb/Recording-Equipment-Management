@@ -51,7 +51,9 @@ class Studio(QMainWindow):
 
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["ID", "Наименование", "Код", "Серийный номер", "Тип", "Состояние"])
+        self.table.setHorizontalHeaderLabels([
+            "ID", "Наименование", "Код", "Серийный номер", "Тип", "Состояние", "Цвет", "Поставщик"
+        ])
         self.table.setColumnHidden(0, True)
         self.table.setStyleSheet(table_widget())
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -228,21 +230,20 @@ class Studio(QMainWindow):
                     self.table.setItem(row, 2, QTableWidgetItem(dialog.code))
                     self.table.setItem(row, 3, QTableWidgetItem(dialog.serial_number))
                     self.table.setItem(row, 4, QTableWidgetItem(dialog.equipment_type))
-                    self.table.setItem(row, 5, QTableWidgetItem(dialog.color))
-                    self.table.setItem(row, 6, QTableWidgetItem(dialog.brand))
+                    self.table.setItem(row, 5, QTableWidgetItem(dialog.condition))
+                    self.table.setItem(row, 6, QTableWidgetItem(dialog.color))
                     self.table.setItem(row, 7, QTableWidgetItem(dialog.supplier))
-                    self.table.setItem(row, 8, QTableWidgetItem(dialog.condition))
 
                     self.update_db(
-                        equipment_id,
-                        dialog.name,
-                        dialog.serial_number,
-                        dialog.equipment_type,
-                        dialog.color,
-                        dialog.brand,
-                        dialog.supplier,
-                        dialog.condition,
-                        dialog.code
+                        equipment_id=equipment_id,
+                        name=dialog.name,
+                        serial_number=dialog.serial_number,
+                        equipment_type=dialog.equipment_type,
+                        condition=dialog.condition,
+                        brand=dialog.brand,
+                        code=dialog.code,
+                        color=dialog.color,
+                        supplier=dialog.supplier
                     )
                     self.load_data_from_db()
 
