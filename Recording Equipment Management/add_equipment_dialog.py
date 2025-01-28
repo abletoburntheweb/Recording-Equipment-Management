@@ -137,11 +137,12 @@ class AddEquipmentDialog(QDialog):
 
 
         button_layout = QHBoxLayout()
-        self.cancel_button = QPushButton("Отмена")
-        self.cancel_button.setObjectName("cancel_button")
         self.ok_button = QPushButton("Добавить")
         self.ok_button.setObjectName("ok_button")
+        self.cancel_button = QPushButton("Отмена")
+        self.cancel_button.setObjectName("cancel_button")
 
+        button_layout = QHBoxLayout()
         button_layout.addWidget(self.cancel_button)
         button_layout.addStretch()
         button_layout.addWidget(self.ok_button)

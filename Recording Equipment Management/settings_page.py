@@ -1,8 +1,12 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QTableWidget, QTableWidgetItem, QPushButton, QInputDialog, QMessageBox, QHBoxLayout
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QComboBox, QTableWidget, QTableWidgetItem,
+    QPushButton, QMessageBox, QHBoxLayout
+)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
 from styles import table_widget, combo_box, add_button, back_button
+from add_item_dialog import AddItemDialog  # Импортируем диалоговое окно
 
 
 class SettingsPage(QDialog):
@@ -112,11 +116,30 @@ class SettingsPage(QDialog):
         }
         table = table_mapping[selected_list]
 
-        text, ok = QInputDialog.getText(self, "Добавить элемент", "Введите значение:")
-        if ok and text:
+        dialog = AddItemDialog(table_name=table, parent=self)
+        if dialog.exec() == QDialog.Accepted:
+            item_name, country = dialog.get_inputs()
+            if not item_name:
+                QMessageBox.warning(self, "Ошибка", "Поле с именем не может быть пустым.")
+                return
+
             try:
                 cursor = self.connection.cursor()
-                cursor.execute(f"INSERT INTO {table} ({table}_name) VALUES (%s)", (text,))
+
+                if table == "brand":
+                    if not country:
+                        QMessageBox.warning(self, "Ошибка", "Поле со страной не может быть пустым.")
+                        return
+                    cursor.execute(
+                        "INSERT INTO brand (brand_name, country) VALUES (%s, %s)",
+                        (item_name, country)
+                    )
+                else:
+                    cursor.execute(
+                        f"INSERT INTO {table} ({table}_name) VALUES (%s)",
+                        (item_name,)
+                    )
+
                 self.connection.commit()
                 cursor.close()
                 self.load_items()
