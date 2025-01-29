@@ -33,11 +33,14 @@ class EditEquipmentDialog(QDialog):
         self.set_values(name, code, serial_number, equipment_type, condition)
 
     def set_values(self, name, code, serial_number, equipment_type, condition):
+        print(
+            f"Устанавливаем значения: name={name}, code={code}, serial_number={serial_number}, equipment_type={equipment_type}, condition={condition}, color={self.color}, supplier={self.supplier}")
         self.title.setText(name)
         self.code_field.setText(code)
         self.serial_field.setText(serial_number)
         self.type_combobox.setCurrentText(equipment_type)
         self.color_combobox.setCurrentText(self.color)
+        self.supplier_field.setCurrentText(self.supplier)
 
         if condition == "Новое":
             self.new_condition.setChecked(True)
@@ -116,6 +119,7 @@ class EditEquipmentDialog(QDialog):
             )
 
             self.color_combobox.setCurrentText(self.color)
+            self.supplier_field.setCurrentText(self.supplier)
 
             self.accept()
 
