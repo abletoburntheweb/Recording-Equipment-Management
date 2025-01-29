@@ -287,6 +287,7 @@ class Studio(QMainWindow):
             if not type_id:
                 print(f"Тип '{equipment_type}' не найден в базе данных!")
                 return
+            type_id = type_id[0]
 
             cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (brand,))
             brand_id = cursor.fetchone()
@@ -294,6 +295,7 @@ class Studio(QMainWindow):
                 cursor.execute("INSERT INTO brand (brand_name) VALUES (%s) RETURNING brand_id", (brand,))
                 brand_id = cursor.fetchone()
                 self.connection.commit()
+            brand_id = brand_id[0]
 
             color_id = None
             if color:
@@ -303,6 +305,7 @@ class Studio(QMainWindow):
                     cursor.execute("INSERT INTO color (color_name) VALUES (%s) RETURNING color_id", (color,))
                     color_id = cursor.fetchone()
                     self.connection.commit()
+                color_id = color_id[0]
 
             supplier_id = None
             if supplier:
@@ -313,6 +316,7 @@ class Studio(QMainWindow):
                                    (supplier,))
                     supplier_id = cursor.fetchone()
                     self.connection.commit()
+                supplier_id = supplier_id[0]
 
             cursor.execute(
                 """
@@ -332,17 +336,19 @@ class Studio(QMainWindow):
                 (
                     name,
                     serial_number,
-                    type_id[0],
+                    type_id,
                     condition,
-                    brand_id[0],
+                    brand_id,
                     code,
-                    color_id[0] if color_id else None,
-                    supplier_id[0] if supplier_id else None,
+                    color_id,
+                    supplier_id,
                     equipment_id,
                 )
             )
             self.connection.commit()
             logging.debug(f"Equipment with ID {equipment_id} successfully updated.")
+            print(f"Оборудование с ID {equipment_id} успешно обновлено.")
+
         except Exception as e:
             self.connection.rollback()
             print(f"Ошибка обновления данных: {e}")

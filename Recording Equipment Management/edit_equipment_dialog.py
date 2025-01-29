@@ -81,10 +81,10 @@ class EditEquipmentDialog(QDialog):
         self.values_set = True
 
     def save_equipment(self):
-        selected_color = self.color_combobox.currentText()
+        selected_color = str(self.color_combobox.currentText())
         selected_type_name = str(self.type_combobox.currentText())
-        selected_brand = self.brand_combobox.currentText()
-        selected_supplier = self.supplier_field.currentText()
+        selected_brand = str(self.brand_combobox.currentText())
+        selected_supplier = str(self.supplier_field.currentText())
 
         logging.debug(f"Selected type name: {selected_type_name}")
         logging.debug(f"Selected color name: {selected_color}")
@@ -99,7 +99,6 @@ class EditEquipmentDialog(QDialog):
             connection = self.parent().connection
             cursor = connection.cursor()
 
-
             cursor.execute("SELECT color_id FROM color WHERE color_name = %s", (selected_color,))
             color_id = cursor.fetchone()
 
@@ -107,7 +106,6 @@ class EditEquipmentDialog(QDialog):
                 QMessageBox.warning(self, "Ошибка", f"Цвет '{selected_color}' не найден в базе.")
                 return
             color_id = color_id[0]
-
 
             cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (selected_type_name,))
             type_id = cursor.fetchone()
@@ -117,7 +115,6 @@ class EditEquipmentDialog(QDialog):
                 return
             type_id = type_id[0]
 
-
             cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (selected_brand,))
             brand_id = cursor.fetchone()
 
@@ -125,6 +122,7 @@ class EditEquipmentDialog(QDialog):
                 QMessageBox.warning(self, "Ошибка", f"Бренд '{selected_brand}' не найден в базе.")
                 return
             brand_id = brand_id[0]
+
             cursor.execute("SELECT supplier_id FROM supplier WHERE supplier_name = %s", (selected_supplier,))
             supplier_id = cursor.fetchone()
 
@@ -174,7 +172,15 @@ class EditEquipmentDialog(QDialog):
 
                 cursor.execute("""
                     UPDATE equipment
-                    SET name = %s, code = %s, serial_number = %s, type_id = %s, color_id = %s, brand_id = %s, supplier_id = %s, condition = %s
+                    SET 
+                        name = %s,
+                        code = %s,
+                        serial_number = %s,
+                        type_id = %s,
+                        color_id = %s,
+                        brand_id = %s,
+                        supplier_id = %s,
+                        condition = %s
                     WHERE equipment_id = %s
                 """, (
                     self.name, self.code, self.serial_number, type_id, color_id, brand_id, supplier_id, self.condition,
@@ -186,6 +192,7 @@ class EditEquipmentDialog(QDialog):
                 QMessageBox.information(self, "Сохранение", "Данные оборудования успешно обновлены.")
                 self.accept()
 
+                # Перезагрузка данных в родительском окне
                 self.parent().load_data_from_db()
 
         except Exception as e:
