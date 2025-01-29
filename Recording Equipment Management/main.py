@@ -137,52 +137,125 @@ class Studio(QMainWindow):
     def open_settings_page(self):
         settings_dialog = SettingsPage(self)
         settings_dialog.exec_()
+
     def open_add_equipment_dialog(self):
-        dialog = AddEquipmentDialog(self)
+        dialog = AddEquipmentDialog(parent=self)
         if dialog.exec_() == QDialog.Accepted:
             name = dialog.name_input.text()
             code = dialog.code_input.text()
             serial_number = dialog.serial_number_input.text()
             item_type = dialog.type_input.currentText()
             status = dialog.get_status()
+            brand = dialog.brand_input.currentText()
+            country = dialog.country_input.currentText()
+            supplier = dialog.supplier_input.currentText()
+            color = dialog.color_input.currentText()
+            image_path = dialog.image_input.text()
 
-
-            row_count = self.table.rowCount()
-            self.table.insertRow(row_count)
-            self.table.setItem(row_count, 1, QTableWidgetItem(name))
-            self.table.setItem(row_count, 2, QTableWidgetItem(code))
-            self.table.setItem(row_count, 3, QTableWidgetItem(serial_number))
-            self.table.setItem(row_count, 4, QTableWidgetItem(item_type))
-            self.table.setItem(row_count, 5, QTableWidgetItem(status))
-
-            self.save_to_db(name, code, serial_number, item_type, status)
+            self.save_to_db(
+                name=name,
+                code=code,
+                serial_number=serial_number,
+                item_type=item_type,
+                status=status,
+                brand=brand,
+                country=country,
+                supplier=supplier,
+                color=color,
+                image_path=image_path
+            )
             self.load_data_from_db()
 
-    def save_to_db(self, name, code, serial_number, type_name, condition):
+    def save_to_db(self, name, code, serial_number, item_type, status, brand, country, supplier, color,
+                   image_path=None):
         if not self.connection:
             return
 
         try:
             cursor = self.connection.cursor()
 
-            cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (type_name,))
+            cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (item_type,))
             type_id = cursor.fetchone()
             if not type_id:
-                print(f"Тип оборудования '{type_name}' не найден в базе данных!")
+                cursor.execute("INSERT INTO type (type_name) VALUES (%s) RETURNING type_id", (item_type,))
+                type_id = cursor.fetchone()
+                self.connection.commit()
+                print(f"Тип '{item_type}' добавлен в базу данных с ID {type_id[0]}")
+            else:
+                print(f"Тип '{item_type}' найден с ID {type_id[0]}")
+
+            cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (brand,))
+            brand_id = cursor.fetchone()
+            if not brand_id:
+                cursor.execute("INSERT INTO brand (brand_name, country) VALUES (%s, %s) RETURNING brand_id",
+                               (brand, country))
+                brand_id = cursor.fetchone()
+                self.connection.commit()
+                print(f"Бренд '{brand}' добавлен в базу данных с ID {brand_id[0]}")
+            else:
+                print(f"Бренд '{brand}' найден с ID {brand_id[0]}")
+
+            color_id = None
+            if color:
+                cursor.execute("SELECT color_id FROM color WHERE color_name = %s", (color,))
+                color_id = cursor.fetchone()
+                if not color_id:
+                    cursor.execute("INSERT INTO color (color_name) VALUES (%s) RETURNING color_id", (color,))
+                    color_id = cursor.fetchone()
+                    self.connection.commit()
+                    print(f"Цвет '{color}' добавлен в базу данных с ID {color_id[0]}")
+                else:
+                    print(f"Цвет '{color}' найден с ID {color_id[0]}")
+
+            supplier_id = None
+            if supplier:
+                cursor.execute("SELECT supplier_id FROM supplier WHERE supplier_name = %s", (supplier,))
+                supplier_id = cursor.fetchone()
+                if not supplier_id:
+                    cursor.execute("INSERT INTO supplier (supplier_name) VALUES (%s) RETURNING supplier_id",
+                                   (supplier,))
+                    supplier_id = cursor.fetchone()
+                    self.connection.commit()
+                    print(f"Поставщик '{supplier}' добавлен в базу данных с ID {supplier_id[0]}")
+                else:
+                    print(f"Поставщик '{supplier}' найден с ID {supplier_id[0]}")
+
+            if not type_id:
+                print("Ошибка: type_id не получен.")
+                return
+            if not brand_id:
+                print("Ошибка: brand_id не получен.")
+                return
+            if color and not color_id:
+                print("Ошибка: color_id не получен.")
+                return
+            if supplier and not supplier_id:
+                print("Ошибка: supplier_id не получен.")
                 return
 
             cursor.execute(
                 """
-                INSERT INTO equipment (name, code, serial_number, type_id, condition)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO equipment (name, code, serial_number, type_id, condition, brand_id, color_id, supplier_id, image_path)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (name, code, serial_number, type_id[0], condition)
+                (
+                    name,
+                    code,
+                    serial_number,
+                    type_id[0],
+                    status,
+                    brand_id[0],
+                    color_id[0] if color_id else None,
+                    supplier_id[0] if supplier_id else None,
+                    image_path,
+                )
             )
             self.connection.commit()
             cursor.close()
 
             print("Оборудование успешно добавлено в базу данных.")
-            print(f"Добавлено оборудование: {name}, {code}, {serial_number}, {type_name}, {condition}")
+            print(
+                f"Добавлено оборудование: {name}, {code}, {serial_number}, {item_type}, {status}, {brand}, {color}, {supplier}, {image_path}")
         except Exception as e:
             self.connection.rollback()
             print(f"Ошибка сохранения данных: {e}")
@@ -210,7 +283,8 @@ class Studio(QMainWindow):
                 b.brand_name,             -- Бренд
                 s.supplier_name,          -- Поставщик
                 e.condition,              -- Состояние
-                e.image_path              -- Путь к изображению
+                e.image_path,             -- Путь к изображению
+                e.description             -- Описание
             FROM equipment e
             LEFT JOIN type t ON e.type_id = t.type_id
             LEFT JOIN color c ON e.color_id = c.color_id
@@ -232,7 +306,8 @@ class Studio(QMainWindow):
                     brand=data[6],
                     supplier=data[7],
                     condition=data[8],
-                    image_path=data[9],  # Добавляем путь к изображению
+                    image_path=data[9],
+                    description=data[10],
                     equipment_id=equipment_id,
                     parent=self
                 )
@@ -256,6 +331,7 @@ class Studio(QMainWindow):
                           f"Code: {dialog.code}, "
                           f"Color: {dialog.color}, "
                           f"Supplier: {dialog.supplier}, "
+                          f"Description: {dialog.description_text}, " 
                           f"Image Path: {dialog.image_path}")
 
                     self.update_db(
@@ -268,7 +344,8 @@ class Studio(QMainWindow):
                         code=dialog.code,
                         color=dialog.color,
                         supplier=dialog.supplier,
-                        image_path=dialog.image_path  # Добавляем путь к изображению
+                        description=dialog.description_text,  # Добавляем описание
+                        image_path=dialog.image_path
                     )
                     self.load_data_from_db()
 
@@ -276,7 +353,7 @@ class Studio(QMainWindow):
             print(f"Ошибка загрузки данных для редактирования: {e}")
 
     def update_db(self, equipment_id, name, serial_number, equipment_type, condition, brand, code=None, color=None,
-                  supplier=None, image_path=None):
+                  supplier=None, description=None, image_path=None):
         if not self.connection:
             print("Нет соединения с базой данных.")
             return
@@ -355,7 +432,8 @@ class Studio(QMainWindow):
                     code = %s,
                     color_id = %s,
                     supplier_id = %s,
-                    image_path = %s
+                    image_path = %s,
+                    description = %s  -- Добавляем описание
                 WHERE 
                     equipment_id = %s
                 """,
@@ -368,7 +446,8 @@ class Studio(QMainWindow):
                     code,
                     color_id[0] if color_id else None,
                     supplier_id[0] if supplier_id else None,
-                    image_path,  # Новый аргумент
+                    image_path,
+                    description,
                     equipment_id,
                 )
             )

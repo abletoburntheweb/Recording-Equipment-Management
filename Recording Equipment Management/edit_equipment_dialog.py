@@ -9,7 +9,7 @@ import styles
 
 class EditEquipmentDialog(QDialog):
     def __init__(self, name="", brand="", country="", supplier="", condition="", serial_number="",
-                 code="", equipment_type="", color="", equipment_id=None, image_path=None, parent=None):
+                 code="", equipment_type="", color="", equipment_id=None, image_path=None, description="", parent=None):
         super().__init__(parent)
         self.setWindowTitle("Редактирование оборудования")
         self.setFixedSize(1280, 720)
@@ -24,18 +24,19 @@ class EditEquipmentDialog(QDialog):
         self.equipment_type = equipment_type
         self.color = color
         self.equipment_id = equipment_id
-        self.image_path = image_path  # Добавляем путь к изображению
+        self.image_path = image_path
+        self.description_text = description  # Добавляем описание
 
         self.setup_ui()
         self.apply_styles()
         self.connect_buttons()
 
         self.load_data_from_db()
-        self.set_values(name, code, serial_number, equipment_type, condition)
+        self.set_values(name, code, serial_number, equipment_type, condition, description)
 
-    def set_values(self, name, code, serial_number, equipment_type, condition):
+    def set_values(self, name, code, serial_number, equipment_type, condition, description):
         print(
-            f"Устанавливаем значения: name={name}, code={code}, serial_number={serial_number}, equipment_type={equipment_type}, condition={condition}, color={self.color}, supplier={self.supplier}, image_path={self.image_path}")
+            f"Устанавливаем значения: name={name}, code={code}, serial_number={serial_number}, equipment_type={equipment_type}, condition={condition}, color={self.color}, supplier={self.supplier}, image_path={self.image_path}, description={description}")
         self.title.setText(name)
         self.code_field.setText(code)
         self.serial_field.setText(serial_number)
@@ -60,6 +61,9 @@ class EditEquipmentDialog(QDialog):
                 pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
 
+        if description:
+            self.description.setPlainText(description)
+
     def save_equipment(self):
         is_valid = True
 
@@ -78,6 +82,7 @@ class EditEquipmentDialog(QDialog):
             self.color = self.color_combobox.currentText().strip()
             self.brand = self.brand_combobox.currentText().strip()
             self.supplier = self.supplier_field.currentText().strip()
+            self.description_text = self.description.toPlainText().strip()
 
             if self.new_condition.isChecked():
                 self.condition = "Новое"
@@ -88,10 +93,9 @@ class EditEquipmentDialog(QDialog):
             else:
                 self.condition = ""
 
-            # Передаем путь к изображению
             image_path = getattr(self, 'image_path', None)
             print(
-                f"Передаём данные в update_db: ID: {self.equipment_id}, Name: {self.name}, Serial: {self.serial_number}, Type: {self.equipment_type}, Condition: {self.condition}, Brand: {self.brand}, Code: {self.code}, Color: {self.color}, Supplier: {self.supplier}, Image Path: {image_path}")
+                f"Передаём данные в update_db: ID: {self.equipment_id}, Name: {self.name}, Serial: {self.serial_number}, Type: {self.equipment_type}, Condition: {self.condition}, Brand: {self.brand}, Code: {self.code}, Color: {self.color}, Supplier: {self.supplier}, Description: {self.description_text}, Image Path: {image_path}")
             self.parent().update_db(
                 equipment_id=self.equipment_id,
                 name=self.name,
@@ -102,6 +106,7 @@ class EditEquipmentDialog(QDialog):
                 code=self.code,
                 color=self.color,
                 supplier=self.supplier,
+                description=self.description_text,
                 image_path=image_path
             )
 
@@ -238,20 +243,24 @@ class EditEquipmentDialog(QDialog):
             cursor.execute("SELECT supplier_name FROM supplier")
             self.supplier_field.addItems([row[0] for row in cursor.fetchall()])
 
-            cursor.execute("SELECT image_path FROM equipment WHERE equipment_id = %s", (self.equipment_id,))
+            cursor.execute("SELECT image_path, description FROM equipment WHERE equipment_id = %s",
+                           (self.equipment_id,))
             result = cursor.fetchone()
-            if result and result[0]:
-                image_path = result[0]
-                if os.path.exists(image_path):
-                    self.image_path = image_path  # Сохраняем путь
+            if result:
+                image_path, description = result
+                if image_path and os.path.exists(image_path):
+                    self.image_path = image_path
                     pixmap = QPixmap(image_path)
                     self.image_label.setPixmap(
                         pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     )
                 else:
                     print(f"Файл {image_path} не найден. Возможно, его удалили.")
+
+                if description:
+                    self.description.setPlainText(description)
             else:
-                print("Изображение не добавлено")
+                print("Изображение и описание не добавлены")
 
             cursor.close()
         except Exception as e:
@@ -267,7 +276,7 @@ class EditEquipmentDialog(QDialog):
             self.image_label.setPixmap(
                 pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
-            self.image_path = file_path  # Сохраняем путь
+            self.image_path = file_path
             print(f"Выбрано изображение: {file_path}")
 
     def update_country_field(self, brand_name):

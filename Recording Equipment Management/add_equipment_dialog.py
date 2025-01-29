@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QLineEdit, QComboBox, QFileDialog, QGroupBox, QRadioButton, QButtonGroup
+    QLineEdit, QComboBox, QFileDialog, QGroupBox, QRadioButton, QButtonGroup, QMessageBox
 )
 import psycopg2
 import shutil
@@ -82,7 +82,6 @@ class AddEquipmentDialog(QDialog):
         additional_layout = QVBoxLayout()
         additional_group.setLayout(additional_layout)
 
-
         image_layout = QHBoxLayout()
         self.image_label = QLabel("Изображение:")
         self.image_input = QLineEdit(image_path)
@@ -93,7 +92,6 @@ class AddEquipmentDialog(QDialog):
         image_layout.addWidget(self.image_input)
         image_layout.addWidget(self.image_button)
         additional_layout.addLayout(image_layout)
-
 
         brand_country_layout = QHBoxLayout()
         self.brand_label = QLabel("Бренд:")
@@ -114,7 +112,6 @@ class AddEquipmentDialog(QDialog):
         brand_country_layout.addWidget(self.country_input)
         additional_layout.addLayout(brand_country_layout)
 
-
         supplier_color_layout = QHBoxLayout()
         self.supplier_label = QLabel("Поставщик:")
         self.supplier_input = QComboBox()
@@ -134,7 +131,6 @@ class AddEquipmentDialog(QDialog):
         additional_layout.addLayout(supplier_color_layout)
 
         self.layout.addWidget(additional_group)
-
 
         button_layout = QHBoxLayout()
         self.cancel_button = QPushButton("Отмена")
@@ -180,15 +176,22 @@ class AddEquipmentDialog(QDialog):
     def select_image(self):
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
-                                                   "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
+                                                   "Images (*.png *.xpm *.jpg *.jpeg *.bmp);;All Files (*)",
+                                                   options=options)
         if file_path:
-
             images_dir = os.path.join(os.getcwd(), "images")
+            if not os.path.exists(images_dir):
+                os.makedirs(images_dir)
+
             file_name = os.path.basename(file_path)
             destination_path = os.path.join(images_dir, file_name)
 
-            try:
+            if os.path.abspath(file_path) == os.path.abspath(destination_path):
+                self.image_input.setText(destination_path)
+                print(f"Файл уже находится в целевой директории: {destination_path}")
+                return
 
+            try:
                 shutil.copy(file_path, destination_path)
                 self.image_input.setText(destination_path)
                 print(f"Файл скопирован в {destination_path}")
@@ -212,12 +215,18 @@ class AddEquipmentDialog(QDialog):
         else:
             self.code_input.setStyleSheet("")
 
-        if not self.serial_number_input.text().strip():
+        serial_number = self.serial_number_input.text().strip()
+        if not serial_number:
             self.serial_number_input.setPlaceholderText("Поле не может быть пустым")
             self.serial_number_input.setStyleSheet("border: 1px solid red;")
             is_valid = False
         else:
-            self.serial_number_input.setStyleSheet("")
+            if self.is_serial_number_exists(serial_number):
+                QMessageBox.warning(self, "Ошибка", f"Серийный номер {serial_number} уже существует.")
+                self.serial_number_input.setStyleSheet("border: 1px solid red;")
+                is_valid = False
+            else:
+                self.serial_number_input.setStyleSheet("")
 
         if not self.type_input.currentText().strip():
             self.type_input.setStyleSheet("border: 1px solid red;")
@@ -255,6 +264,33 @@ class AddEquipmentDialog(QDialog):
         if not is_valid:
             print("Обязательные поля не заполнены. Добавление не выполнено.")
             return
+
+        name = self.name_input.text().strip()
+        code = self.code_input.text().strip()
+        serial_number = self.serial_number_input.text().strip()
+        item_type = self.type_input.currentText().strip()
+        status = self.get_status()
+        brand = self.brand_input.currentText().strip()
+        country = self.country_input.currentText().strip()
+        supplier = self.supplier_input.currentText().strip()
+        color = self.color_input.currentText().strip()
+
+        print(
+            f"Передаём данные в save_to_db: Name: {name}, Code: {code}, Serial: {serial_number}, Type: {item_type}, Status: {status}, Brand: {brand}, Country: {country}, Supplier: {supplier}, Color: {color}, Image Path: {image_path}"
+        )
+
+        self.parent().save_to_db(
+            name=name,
+            code=code,
+            serial_number=serial_number,
+            item_type=item_type,
+            status=status,
+            brand=brand,
+            country=country,
+            supplier=supplier,
+            color=color,
+            image_path=image_path
+        )
 
         self.accept()
 
@@ -314,6 +350,23 @@ class AddEquipmentDialog(QDialog):
                 conn.commit()
         except Exception as e:
             print(f"Ошибка добавления в базу данных: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def is_serial_number_exists(self, serial_number):
+        query = "SELECT COUNT(*) FROM equipment WHERE serial_number = %s"
+        conn = None
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            with conn.cursor() as cur:
+                cur.execute(query, (serial_number,))
+                count = cur.fetchone()[0]
+                print(f"Количество записей с этим серийным номером: {count}")
+                return count > 0
+        except Exception as e:
+            print(f"Ошибка проверки серийного номера: {e}")
+            return False
         finally:
             if conn:
                 conn.close()
