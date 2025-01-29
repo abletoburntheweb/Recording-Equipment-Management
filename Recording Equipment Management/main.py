@@ -209,7 +209,8 @@ class Studio(QMainWindow):
                 c.color_name,             -- Цвет
                 b.brand_name,             -- Бренд
                 s.supplier_name,          -- Поставщик
-                e.condition               -- Состояние
+                e.condition,              -- Состояние
+                e.image_path              -- Путь к изображению
             FROM equipment e
             LEFT JOIN type t ON e.type_id = t.type_id
             LEFT JOIN color c ON e.color_id = c.color_id
@@ -231,6 +232,7 @@ class Studio(QMainWindow):
                     brand=data[6],
                     supplier=data[7],
                     condition=data[8],
+                    image_path=data[9],  # Добавляем путь к изображению
                     equipment_id=equipment_id,
                     parent=self
                 )
@@ -253,7 +255,8 @@ class Studio(QMainWindow):
                           f"Brand: {dialog.brand}, "
                           f"Code: {dialog.code}, "
                           f"Color: {dialog.color}, "
-                          f"Supplier: {dialog.supplier}")
+                          f"Supplier: {dialog.supplier}, "
+                          f"Image Path: {dialog.image_path}")
 
                     self.update_db(
                         equipment_id=equipment_id,
@@ -264,7 +267,8 @@ class Studio(QMainWindow):
                         brand=dialog.brand,
                         code=dialog.code,
                         color=dialog.color,
-                        supplier=dialog.supplier
+                        supplier=dialog.supplier,
+                        image_path=dialog.image_path  # Добавляем путь к изображению
                     )
                     self.load_data_from_db()
 
@@ -272,7 +276,7 @@ class Studio(QMainWindow):
             print(f"Ошибка загрузки данных для редактирования: {e}")
 
     def update_db(self, equipment_id, name, serial_number, equipment_type, condition, brand, code=None, color=None,
-                  supplier=None):
+                  supplier=None, image_path=None):
         if not self.connection:
             print("Нет соединения с базой данных.")
             return
@@ -350,7 +354,8 @@ class Studio(QMainWindow):
                     brand_id = %s,
                     code = %s,
                     color_id = %s,
-                    supplier_id = %s
+                    supplier_id = %s,
+                    image_path = %s
                 WHERE 
                     equipment_id = %s
                 """,
@@ -363,6 +368,7 @@ class Studio(QMainWindow):
                     code,
                     color_id[0] if color_id else None,
                     supplier_id[0] if supplier_id else None,
+                    image_path,  # Новый аргумент
                     equipment_id,
                 )
             )
