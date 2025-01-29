@@ -1,3 +1,4 @@
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QLineEdit, QComboBox, QFileDialog, QGroupBox, QRadioButton, QButtonGroup, QMessageBox
@@ -15,6 +16,7 @@ class AddEquipmentDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Добавить оборудование")
         self.setFixedSize(700, 700)
+        self.setWindowIcon(QIcon("equipment.ico"))
 
         self.setStyleSheet(add_equipment_dialog())
         self.layout = QVBoxLayout(self)

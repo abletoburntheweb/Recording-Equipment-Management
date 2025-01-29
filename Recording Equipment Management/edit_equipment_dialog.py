@@ -2,7 +2,7 @@ import os
 
 from PyQt5.QtWidgets import (QDialog, QLabel, QLineEdit, QComboBox, QTextEdit, QPushButton, QVBoxLayout,
                              QHBoxLayout, QGridLayout, QRadioButton, QMessageBox, QButtonGroup, QFileDialog)
-from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtGui import QFont, QPixmap, QIcon
 from PyQt5.QtCore import Qt
 import styles
 
@@ -13,6 +13,7 @@ class EditEquipmentDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Редактирование оборудования")
         self.setFixedSize(1280, 720)
+        self.setWindowIcon(QIcon("equipment.ico"))
 
         self.name = name
         self.brand = brand
@@ -25,7 +26,7 @@ class EditEquipmentDialog(QDialog):
         self.color = color
         self.equipment_id = equipment_id
         self.image_path = image_path
-        self.description_text = description  # Добавляем описание
+        self.description_text = description
 
         self.setup_ui()
         self.apply_styles()

@@ -1,7 +1,6 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QTableWidget, QTableWidgetItem, QPushButton, QInputDialog, QMessageBox, QHBoxLayout
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
-
+from PyQt5.QtGui import QFont, QIcon
 from styles import table_widget, combo_box, add_button, back_button
 
 
@@ -10,6 +9,7 @@ class SettingsPage(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Настройки списков")
         self.setGeometry(100, 100, 1280, 720)
+        self.setWindowIcon(QIcon("equipment.ico"))
 
         self.layout = QVBoxLayout(self)
 

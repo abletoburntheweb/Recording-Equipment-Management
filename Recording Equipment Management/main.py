@@ -1,5 +1,6 @@
 import sys
 import psycopg2
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel, \
     QTableWidget, QTableWidgetItem, QHeaderView, QDialog, QLineEdit
 from PyQt5.QtCore import Qt
@@ -15,6 +16,7 @@ class Studio(QMainWindow):
         super().__init__()
         self.setWindowTitle("Учет оборудования звукозаписи")
         self.setGeometry(100, 100, 1280, 720)
+        self.setWindowIcon(QIcon("equipment.ico"))
         self.setStyleSheet(main_window())
 
         self.connection = self.get_db_connection()
@@ -344,7 +346,7 @@ class Studio(QMainWindow):
                         code=dialog.code,
                         color=dialog.color,
                         supplier=dialog.supplier,
-                        description=dialog.description_text,  # Добавляем описание
+                        description=dialog.description_text, 
                         image_path=dialog.image_path
                     )
                     self.load_data_from_db()
