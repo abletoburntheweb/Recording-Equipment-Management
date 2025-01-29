@@ -4,20 +4,16 @@ from PyQt5.QtWidgets import (QDialog, QLabel, QLineEdit, QComboBox, QTextEdit, Q
                              QHBoxLayout, QGridLayout, QRadioButton, QMessageBox, QButtonGroup, QFileDialog)
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
-import logging
 import styles
-
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class EditEquipmentDialog(QDialog):
-    def __init__(self, equipment_id=None, name="", brand="", country="", supplier="", condition="", serial_number="",
+    def __init__(self, name="", brand="", country="", supplier="", condition="", serial_number="",
                  code="", equipment_type="Гитара", color="Красный", parent=None):
         super().__init__(parent)
         self.setWindowTitle("Редактирование оборудования")
         self.setFixedSize(1280, 720)
 
-        self.equipment_id = equipment_id
         self.name = name
         self.brand = brand
         self.country = country
@@ -28,22 +24,13 @@ class EditEquipmentDialog(QDialog):
         self.equipment_type = equipment_type
         self.color = color
 
-        self.values_set = False
-        self.data_loaded = False
-
         self.setup_ui()
         self.apply_styles()
         self.connect_buttons()
 
-        if not self.data_loaded:
-            self.load_data_from_db()
+        self.set_values(name, code, serial_number, equipment_type, condition)
 
-    def set_values(self, name, code, serial_number, equipment_type, condition, brand, supplier, color):
-        if self.values_set:
-            logging.debug("Values already set, skipping set_values")
-            return
-
-        logging.debug("Setting values for the first time")
+    def set_values(self, name, code, serial_number, equipment_type, condition):
         self.title.setText(name)
         self.code_field.setText(code)
         self.serial_field.setText(serial_number)
@@ -60,147 +47,60 @@ class EditEquipmentDialog(QDialog):
             self.used_condition.setChecked(False)
             self.damaged_condition.setChecked(False)
 
-        if brand:
-            logging.debug(f"Setting equipment brand: {brand}")
-            self.brand_combobox.blockSignals(True)
-            self.brand_combobox.setCurrentText(brand)
-            self.brand_combobox.blockSignals(False)
-
-        if supplier:
-            logging.debug(f"Setting equipment supplier: {supplier}")
-            self.supplier_field.blockSignals(True)
-            self.supplier_field.setCurrentText(supplier)
-            self.supplier_field.blockSignals(False)
-
-        if color:
-            logging.debug(f"Setting equipment color: {color}")
-            self.color_combobox.blockSignals(True)
-            self.color_combobox.setCurrentText(color)
-            self.color_combobox.blockSignals(False)
-
-        self.values_set = True
-
     def save_equipment(self):
-        selected_color = str(self.color_combobox.currentText())
-        selected_type_name = str(self.type_combobox.currentText())
-        selected_brand = str(self.brand_combobox.currentText())
-        selected_supplier = str(self.supplier_field.currentText())
+        is_valid = True
 
-        logging.debug(f"Selected type name: {selected_type_name}")
-        logging.debug(f"Selected color name: {selected_color}")
-        logging.debug(f"Selected brand name: {selected_brand}")
-        logging.debug(f"Selected supplier name: {selected_supplier}")
+        if not self.title.text().strip():
+            self.title.setPlaceholderText("Поле не может быть пустым")
+            self.title.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.title.setStyleSheet("")
 
-        if not selected_type_name:
-            QMessageBox.warning(self, "Ошибка", "Тип оборудования не выбран.")
-            return
+        if not self.code_field.text().strip():
+            self.code_field.setPlaceholderText("Поле не может быть пустым")
+            self.code_field.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.code_field.setStyleSheet("")
 
-        try:
-            connection = self.parent().connection
-            cursor = connection.cursor()
+        if not self.serial_field.text().strip():
+            self.serial_field.setPlaceholderText("Поле не может быть пустым")
+            self.serial_field.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.serial_field.setStyleSheet("")
 
-            cursor.execute("SELECT color_id FROM color WHERE color_name = %s", (selected_color,))
-            color_id = cursor.fetchone()
+        if not self.type_combobox.currentText().strip():
+            self.type_combobox.setStyleSheet("border: 1px solid red;")
+            is_valid = False
+        else:
+            self.type_combobox.setStyleSheet("")
 
-            if not color_id:
-                QMessageBox.warning(self, "Ошибка", f"Цвет '{selected_color}' не найден в базе.")
-                return
-            color_id = color_id[0]
+        if is_valid:
+            self.name = self.title.text().strip()
+            self.code = self.code_field.text().strip()
+            self.serial_number = self.serial_field.text().strip()
+            self.equipment_type = self.type_combobox.currentText().strip()
+            self.color = self.color_combobox.currentText().strip()
+            self.brand = self.brand_combobox.currentText().strip()
+            self.supplier = self.supplier_field.currentText().strip()
 
-            cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (selected_type_name,))
-            type_id = cursor.fetchone()
-
-            if not type_id:
-                QMessageBox.warning(self, "Ошибка", f"Тип оборудования '{selected_type_name}' не найден в базе.")
-                return
-            type_id = type_id[0]
-
-            cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (selected_brand,))
-            brand_id = cursor.fetchone()
-
-            if not brand_id:
-                QMessageBox.warning(self, "Ошибка", f"Бренд '{selected_brand}' не найден в базе.")
-                return
-            brand_id = brand_id[0]
-
-            cursor.execute("SELECT supplier_id FROM supplier WHERE supplier_name = %s", (selected_supplier,))
-            supplier_id = cursor.fetchone()
-
-            if not supplier_id:
-                QMessageBox.warning(self, "Ошибка", f"Поставщик '{selected_supplier}' не найден в базе.")
-                return
-            supplier_id = supplier_id[0]
-
-            is_valid = True
-            if not self.title.text().strip():
-                self.title.setPlaceholderText("Поле не может быть пустым")
-                self.title.setStyleSheet("border: 1px solid red;")
-                is_valid = False
+            if self.new_condition.isChecked():
+                self.condition = "Новое"
+            elif self.used_condition.isChecked():
+                self.condition = "Б/У"
+            elif self.damaged_condition.isChecked():
+                self.condition = "Поврежденное"
             else:
-                self.title.setStyleSheet("")
+                self.condition = ""
 
-            if not self.code_field.text().strip():
-                self.code_field.setPlaceholderText("Поле не может быть пустым")
-                self.code_field.setStyleSheet("border: 1px solid red;")
-                is_valid = False
-            else:
-                self.code_field.setStyleSheet("")
+            print(f"Сохранённое состояние: {self.condition}")
+            print(f"Сохранённый тип: {self.equipment_type}")
+            print(f"Сохранённый код: {self.code}")
+            print(f"Сохранённый поставщик: {self.supplier}")
 
-            if not self.serial_field.text().strip():
-                self.serial_field.setPlaceholderText("Поле не может быть пустым")
-                self.serial_field.setStyleSheet("border: 1px solid red;")
-                is_valid = False
-            else:
-                self.serial_field.setStyleSheet("")
-
-            if is_valid:
-                self.name = self.title.text().strip()
-                self.code = self.code_field.text().strip()
-                self.serial_number = self.serial_field.text().strip()
-
-                if self.new_condition.isChecked():
-                    self.condition = "Новое"
-                elif self.used_condition.isChecked():
-                    self.condition = "Б/У"
-                elif self.damaged_condition.isChecked():
-                    self.condition = "Поврежденное"
-                else:
-                    self.condition = ""
-
-                logging.debug(
-                    f"Saving equipment: name={self.name}, code={self.code}, serial_number={self.serial_number}, type_id={type_id}, color_id={color_id}, brand_id={brand_id}, supplier_id={supplier_id}, condition={self.condition}, equipment_id={self.equipment_id}")
-
-                cursor.execute("""
-                    UPDATE equipment
-                    SET 
-                        name = %s,
-                        code = %s,
-                        serial_number = %s,
-                        type_id = %s,
-                        color_id = %s,
-                        brand_id = %s,
-                        supplier_id = %s,
-                        condition = %s
-                    WHERE equipment_id = %s
-                """, (
-                    self.name, self.code, self.serial_number, type_id, color_id, brand_id, supplier_id, self.condition,
-                    self.equipment_id
-                ))
-
-                connection.commit()
-                logging.debug(f"Equipment with ID {self.equipment_id} successfully updated.")
-                QMessageBox.information(self, "Сохранение", "Данные оборудования успешно обновлены.")
-                self.accept()
-
-                # Перезагрузка данных в родительском окне
-                self.parent().load_data_from_db()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Ошибка обновления данных: {e}")
-            print(f"Ошибка обновления данных: {e}")
-
-        finally:
-            cursor.close()
+            self.accept()
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -220,6 +120,7 @@ class EditEquipmentDialog(QDialog):
         image_layout = QVBoxLayout()
         image_layout.addWidget(self.image_label)
         image_layout.addWidget(self.add_image_button, alignment=Qt.AlignCenter)
+
 
         title_layout = QVBoxLayout()
         self.title = QLineEdit(self.name)
@@ -310,84 +211,46 @@ class EditEquipmentDialog(QDialog):
         self.add_image_button.clicked.connect(self.add_image)
 
     def load_data_from_db(self):
-        if self.data_loaded:
-            logging.debug("Data already loaded, skipping load_data_from_db")
-            return
-
-        logging.debug("Loading data from database")
         try:
             connection = self.parent().connection
-            if not connection:
-                QMessageBox.critical(self, "Ошибка", "Нет соединения с базой данных!")
-                return
+            cursor = connection.cursor()
 
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT brand_name, country FROM brand")
-                self.brand_country_map = {row[0]: row[1] for row in cursor.fetchall()}
+            cursor.execute("SELECT brand_name, country FROM brand")
+            self.brand_country_map = {row[0]: row[1] for row in cursor.fetchall()}
 
-                self.brand_combobox.clear()
-                self.brand_combobox.addItems(self.brand_country_map.keys())
+            self.brand_combobox.addItems(self.brand_country_map.keys())
 
-                if self.brand:
-                    logging.debug(f"Setting equipment brand: {self.brand}")
-                    self.brand_combobox.setCurrentText(self.brand)
+            if self.brand:
+                self.brand_combobox.setCurrentText(self.brand)
 
-                self.update_country_field(self.brand_combobox.currentText())
-                self.brand_combobox.currentTextChanged.connect(self.update_country_field)
+            self.update_country_field(self.brand_combobox.currentText())
 
-                cursor.execute("SELECT type_id, type_name FROM type")
-                types = cursor.fetchall()
-                self.type_combobox.clear()
-                for type_id, type_name in types:
-                    self.type_combobox.addItem(type_name, type_id)
+            self.brand_combobox.currentTextChanged.connect(self.update_country_field)
 
-                if self.equipment_type:
-                    logging.debug(f"Setting equipment type: {self.equipment_type}")
-                    index = self.type_combobox.findText(self.equipment_type)
-                    if index != -1:
-                        self.type_combobox.setCurrentIndex(index)
+            cursor.execute("SELECT type_name FROM type")
+            self.type_combobox.addItems([row[0] for row in cursor.fetchall()])
 
-                cursor.execute("SELECT color_id, color_name FROM color")
-                color_results = cursor.fetchall()
-                self.color_map = {row[1]: row[0] for row in color_results}
+            cursor.execute("SELECT color_name FROM color")
+            self.color_combobox.addItems([row[0] for row in cursor.fetchall()])
 
-                self.color_combobox.clear()
-                self.color_combobox.addItems(self.color_map.keys())
+            cursor.execute("SELECT supplier_name FROM supplier")
+            self.supplier_field.addItems([row[0] for row in cursor.fetchall()])
 
-                if self.color and self.color in self.color_map.keys():
-                    logging.debug(f"Setting equipment color: {self.color}")
-                    self.color_combobox.setCurrentText(self.color)
-
-                cursor.execute("SELECT supplier_name FROM supplier")
-                suppliers = cursor.fetchall()
-                self.supplier_field.clear()
-                self.supplier_field.addItems([row[0] for row in suppliers])
-
-                if self.supplier:
-                    logging.debug(f"Setting equipment supplier: {self.supplier}")
-                    self.supplier_field.setCurrentText(self.supplier)
-
-                cursor.execute("SELECT image_path FROM equipment WHERE serial_number = %s", (self.serial_number,))
-                result = cursor.fetchone()
-
-                if result and result[0]:
-                    image_path = os.path.join("images", result[0])
-                    if os.path.exists(image_path):
-                        pixmap = QPixmap(image_path)
-                        self.image_label.setPixmap(
-                            pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                    else:
-                        QMessageBox.warning(self, "Ошибка", f"Файл изображения не найден: {image_path}")
+            cursor.execute("SELECT image_path FROM equipment WHERE serial_number = %s", (self.serial_number,))
+            result = cursor.fetchone()
+            if result:
+                image_path = os.path.join("images", result[0])
+                if os.path.exists(image_path):
+                    pixmap = QPixmap(image_path)
+                    self.image_label.setPixmap(
+                        pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 else:
-                    print("Изображение не указано в базе данных.")
+                    print(f"Файл изображения не найден: {image_path}")
+            else:
+                print("Изображение не указано в базе данных.")
 
-            self.set_values(self.name, self.code, self.serial_number, self.equipment_type, self.condition, self.brand,
-                            self.supplier, self.color)
-
-            self.data_loaded = True
-
+            cursor.close()
         except Exception as e:
-            QMessageBox.critical(self, "Ошибка загрузки данных", f"Произошла ошибка: {e}")
             print(f"Ошибка загрузки данных из базы: {e}")
 
     def add_image(self):
@@ -401,7 +264,6 @@ class EditEquipmentDialog(QDialog):
                 pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
             print(f"Выбрано изображение: {file_path}")
-
     def update_country_field(self, brand_name):
         country = self.brand_country_map.get(brand_name, "Неизвестно")
         self.country_combobox.clear()

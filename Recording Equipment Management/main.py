@@ -1,4 +1,3 @@
-import logging
 import sys
 import psycopg2
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel, \
@@ -25,7 +24,7 @@ class Studio(QMainWindow):
         layout = QVBoxLayout(central_widget)
 
         header_layout = QHBoxLayout()
-        self.header_label = QLabel("Студия: АудиоКреатив")
+        self.header_label = QLabel("Студия: Студия 1")
         self.header_label.setStyleSheet("QLabel { font-size: 20px; color: #333; }")
         header_layout.addWidget(self.header_label)
 
@@ -94,28 +93,24 @@ class Studio(QMainWindow):
 
     def load_data_from_db(self):
         if not self.connection:
-            logging.error("Ошибка: Соединение с базой данных отсутствует.")
             return
 
-        logging.debug("Loading data from database")
         try:
             cursor = self.connection.cursor()
             query = """
             SELECT 
-                e.equipment_id,
-                e.name,
-                e.code,
-                e.serial_number,
-                t.type_name,
-                e.condition,
-                c.color_name,
-                s.supplier_name,
-                b.brand_name
+                e.equipment_id,           -- ID оборудования
+                e.name AS equipment_name, -- Наименование
+                e.code,                   -- Код
+                e.serial_number,          -- Серийный номер
+                t.type_name,              -- Тип
+                e.condition,              -- Состояние
+                c.color_name,             -- Цвет
+                s.supplier_name           -- Поставщик
             FROM equipment e
             LEFT JOIN type t ON e.type_id = t.type_id
             LEFT JOIN color c ON e.color_id = c.color_id
-            LEFT JOIN supplier s ON e.supplier_id = s.supplier_id
-            LEFT JOIN brand b ON e.brand_id = b.brand_id;
+            LEFT JOIN supplier s ON e.supplier_id = s.supplier_id;
             """
             cursor.execute(query)
             rows = cursor.fetchall()
@@ -126,21 +121,17 @@ class Studio(QMainWindow):
                 row_count = self.table.rowCount()
                 self.table.insertRow(row_count)
 
-                self.table.setItem(row_count, 0, QTableWidgetItem(str(row[0])))  # ID
-                self.table.setItem(row_count, 1, QTableWidgetItem(row[1] or "—"))  # Наименование
-                self.table.setItem(row_count, 2, QTableWidgetItem(row[2] or "—"))  # Код
-                self.table.setItem(row_count, 3, QTableWidgetItem(row[3] or "—"))  # Серийный номер
-                self.table.setItem(row_count, 4, QTableWidgetItem(row[4] or "—"))  # Тип
-                self.table.setItem(row_count, 5, QTableWidgetItem(row[5] or "—"))  # Состояние
-                self.table.setItem(row_count, 6, QTableWidgetItem(row[6] or "—"))  # Цвет
-                self.table.setItem(row_count, 7, QTableWidgetItem(row[7] or "—"))  # Поставщик
-                self.table.setItem(row_count, 8, QTableWidgetItem(row[8] or "—"))  # Бренд
+                self.table.setItem(row_count, 0, QTableWidgetItem(str(row[0])))
+                self.table.setItem(row_count, 1, QTableWidgetItem(row[1]))
+                self.table.setItem(row_count, 2, QTableWidgetItem(row[2] or "—"))
+                self.table.setItem(row_count, 3, QTableWidgetItem(row[3] or "—"))
+                self.table.setItem(row_count, 4, QTableWidgetItem(row[4] or "—"))
+                self.table.setItem(row_count, 5, QTableWidgetItem(row[5] or "—"))
+                self.table.setItem(row_count, 6, QTableWidgetItem(row[6] or "—"))
+                self.table.setItem(row_count, 7, QTableWidgetItem(row[7] or "—"))
 
             cursor.close()
-            logging.debug("Data successfully loaded.")
-            print("Данные успешно загружены.")
         except Exception as e:
-            logging.error(f"Ошибка загрузки данных: {e}")
             print(f"Ошибка загрузки данных: {e}")
 
     def open_settings_page(self):
@@ -232,7 +223,6 @@ class Studio(QMainWindow):
 
             if data:
                 dialog = EditEquipmentDialog(
-                    equipment_id=equipment_id,
                     name=data[1],
                     code=data[2],
                     serial_number=data[3],
@@ -287,7 +277,6 @@ class Studio(QMainWindow):
             if not type_id:
                 print(f"Тип '{equipment_type}' не найден в базе данных!")
                 return
-            type_id = type_id[0]
 
             cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (brand,))
             brand_id = cursor.fetchone()
@@ -295,7 +284,6 @@ class Studio(QMainWindow):
                 cursor.execute("INSERT INTO brand (brand_name) VALUES (%s) RETURNING brand_id", (brand,))
                 brand_id = cursor.fetchone()
                 self.connection.commit()
-            brand_id = brand_id[0]
 
             color_id = None
             if color:
@@ -305,7 +293,6 @@ class Studio(QMainWindow):
                     cursor.execute("INSERT INTO color (color_name) VALUES (%s) RETURNING color_id", (color,))
                     color_id = cursor.fetchone()
                     self.connection.commit()
-                color_id = color_id[0]
 
             supplier_id = None
             if supplier:
@@ -316,7 +303,6 @@ class Studio(QMainWindow):
                                    (supplier,))
                     supplier_id = cursor.fetchone()
                     self.connection.commit()
-                supplier_id = supplier_id[0]
 
             cursor.execute(
                 """
@@ -336,19 +322,18 @@ class Studio(QMainWindow):
                 (
                     name,
                     serial_number,
-                    type_id,
+                    type_id[0],
                     condition,
-                    brand_id,
+                    brand_id[0],
                     code,
-                    color_id,
-                    supplier_id,
+                    color_id[0] if color_id else None,
+                    supplier_id[0] if supplier_id else None,
                     equipment_id,
                 )
             )
             self.connection.commit()
-            logging.debug(f"Equipment with ID {equipment_id} successfully updated.")
-            print(f"Оборудование с ID {equipment_id} успешно обновлено.")
-
+            cursor.close()
+            print(f"Данные оборудования с ID {equipment_id} успешно обновлены.")
         except Exception as e:
             self.connection.rollback()
             print(f"Ошибка обновления данных: {e}")
