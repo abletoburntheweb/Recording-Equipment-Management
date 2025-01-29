@@ -243,6 +243,17 @@ class Studio(QMainWindow):
                     self.table.setItem(row, 6, QTableWidgetItem(dialog.color))
                     self.table.setItem(row, 7, QTableWidgetItem(dialog.supplier))
 
+                    print(f"Передаём данные в update_db: "
+                          f"ID: {equipment_id}, "
+                          f"Name: {dialog.name}, "
+                          f"Serial: {dialog.serial_number}, "
+                          f"Type: {dialog.equipment_type}, "
+                          f"Condition: {dialog.condition}, "
+                          f"Brand: {dialog.brand}, "
+                          f"Code: {dialog.code}, "
+                          f"Color: {dialog.color}, "
+                          f"Supplier: {dialog.supplier}")
+
                     self.update_db(
                         equipment_id=equipment_id,
                         name=dialog.name,
@@ -272,19 +283,26 @@ class Studio(QMainWindow):
         try:
             cursor = self.connection.cursor()
 
+            # Получаем type_id
             cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (equipment_type,))
             type_id = cursor.fetchone()
             if not type_id:
                 print(f"Тип '{equipment_type}' не найден в базе данных!")
                 return
+            print(f"Тип '{equipment_type}' найден с ID {type_id[0]}")
 
+            # Получаем brand_id
             cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (brand,))
             brand_id = cursor.fetchone()
             if not brand_id:
                 cursor.execute("INSERT INTO brand (brand_name) VALUES (%s) RETURNING brand_id", (brand,))
                 brand_id = cursor.fetchone()
                 self.connection.commit()
+                print(f"Бренд '{brand}' добавлен в базу данных с ID {brand_id[0]}")
+            else:
+                print(f"Бренд '{brand}' найден с ID {brand_id[0]}")
 
+            # Получаем color_id
             color_id = None
             if color:
                 cursor.execute("SELECT color_id FROM color WHERE color_name = %s", (color,))
@@ -293,7 +311,11 @@ class Studio(QMainWindow):
                     cursor.execute("INSERT INTO color (color_name) VALUES (%s) RETURNING color_id", (color,))
                     color_id = cursor.fetchone()
                     self.connection.commit()
+                    print(f"Цвет '{color}' добавлен в базу данных с ID {color_id[0]}")
+                else:
+                    print(f"Цвет '{color}' найден с ID {color_id[0]}")
 
+            # Получаем supplier_id
             supplier_id = None
             if supplier:
                 cursor.execute("SELECT supplier_id FROM supplier WHERE supplier_name = %s", (supplier,))
@@ -303,7 +325,25 @@ class Studio(QMainWindow):
                                    (supplier,))
                     supplier_id = cursor.fetchone()
                     self.connection.commit()
+                    print(f"Поставщик '{supplier}' добавлен в базу данных с ID {supplier_id[0]}")
+                else:
+                    print(f"Поставщик '{supplier}' найден с ID {supplier_id[0]}")
 
+            # Проверяем, что все ID получены
+            if not type_id:
+                print("Ошибка: type_id не получен.")
+                return
+            if not brand_id:
+                print("Ошибка: brand_id не получен.")
+                return
+            if color and not color_id:
+                print("Ошибка: color_id не получен.")
+                return
+            if supplier and not supplier_id:
+                print("Ошибка: supplier_id не получен.")
+                return
+
+            # Обновляем запись в таблице equipment
             cursor.execute(
                 """
                 UPDATE equipment
