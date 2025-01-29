@@ -231,6 +231,7 @@ class Studio(QMainWindow):
                     brand=data[6],
                     supplier=data[7],
                     condition=data[8],
+                    equipment_id=equipment_id,
                     parent=self
                 )
 
@@ -283,7 +284,6 @@ class Studio(QMainWindow):
         try:
             cursor = self.connection.cursor()
 
-            # Получаем type_id
             cursor.execute("SELECT type_id FROM type WHERE type_name = %s", (equipment_type,))
             type_id = cursor.fetchone()
             if not type_id:
@@ -291,7 +291,6 @@ class Studio(QMainWindow):
                 return
             print(f"Тип '{equipment_type}' найден с ID {type_id[0]}")
 
-            # Получаем brand_id
             cursor.execute("SELECT brand_id FROM brand WHERE brand_name = %s", (brand,))
             brand_id = cursor.fetchone()
             if not brand_id:
@@ -302,7 +301,6 @@ class Studio(QMainWindow):
             else:
                 print(f"Бренд '{brand}' найден с ID {brand_id[0]}")
 
-            # Получаем color_id
             color_id = None
             if color:
                 cursor.execute("SELECT color_id FROM color WHERE color_name = %s", (color,))
@@ -315,7 +313,6 @@ class Studio(QMainWindow):
                 else:
                     print(f"Цвет '{color}' найден с ID {color_id[0]}")
 
-            # Получаем supplier_id
             supplier_id = None
             if supplier:
                 cursor.execute("SELECT supplier_id FROM supplier WHERE supplier_name = %s", (supplier,))
@@ -329,7 +326,6 @@ class Studio(QMainWindow):
                 else:
                     print(f"Поставщик '{supplier}' найден с ID {supplier_id[0]}")
 
-            # Проверяем, что все ID получены
             if not type_id:
                 print("Ошибка: type_id не получен.")
                 return
@@ -343,7 +339,6 @@ class Studio(QMainWindow):
                 print("Ошибка: supplier_id не получен.")
                 return
 
-            # Обновляем запись в таблице equipment
             cursor.execute(
                 """
                 UPDATE equipment

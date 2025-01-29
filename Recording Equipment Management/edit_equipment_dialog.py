@@ -9,7 +9,7 @@ import styles
 
 class EditEquipmentDialog(QDialog):
     def __init__(self, name="", brand="", country="", supplier="", condition="", serial_number="",
-                 code="", equipment_type="Гитара", color="Красный", parent=None):
+                 code="", equipment_type="", color="", equipment_id=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Редактирование оборудования")
         self.setFixedSize(1280, 720)
@@ -23,11 +23,13 @@ class EditEquipmentDialog(QDialog):
         self.code = code
         self.equipment_type = equipment_type
         self.color = color
+        self.equipment_id = equipment_id
 
         self.setup_ui()
         self.apply_styles()
         self.connect_buttons()
 
+        self.load_data_from_db()
         self.set_values(name, code, serial_number, equipment_type, condition)
 
     def set_values(self, name, code, serial_number, equipment_type, condition):
@@ -35,6 +37,7 @@ class EditEquipmentDialog(QDialog):
         self.code_field.setText(code)
         self.serial_field.setText(serial_number)
         self.type_combobox.setCurrentText(equipment_type)
+        self.color_combobox.setCurrentText(self.color)
 
         if condition == "Новое":
             self.new_condition.setChecked(True)
@@ -100,6 +103,20 @@ class EditEquipmentDialog(QDialog):
             print(f"Сохранённый код: {self.code}")
             print(f"Сохранённый поставщик: {self.supplier}")
 
+            self.parent().update_db(
+                equipment_id=self.equipment_id,
+                name=self.name,
+                serial_number=self.serial_number,
+                equipment_type=self.equipment_type,
+                condition=self.condition,
+                brand=self.brand,
+                code=self.code,
+                color=self.color,
+                supplier=self.supplier
+            )
+
+            self.color_combobox.setCurrentText(self.color)
+
             self.accept()
 
     def setup_ui(self):
@@ -120,7 +137,6 @@ class EditEquipmentDialog(QDialog):
         image_layout = QVBoxLayout()
         image_layout.addWidget(self.image_label)
         image_layout.addWidget(self.add_image_button, alignment=Qt.AlignCenter)
-
 
         title_layout = QVBoxLayout()
         self.title = QLineEdit(self.name)
@@ -206,8 +222,6 @@ class EditEquipmentDialog(QDialog):
         main_layout.addLayout(middle_layout)
         main_layout.addLayout(bottom_layout)
 
-        self.load_data_from_db()
-
         self.add_image_button.clicked.connect(self.add_image)
 
     def load_data_from_db(self):
@@ -264,6 +278,7 @@ class EditEquipmentDialog(QDialog):
                 pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
             print(f"Выбрано изображение: {file_path}")
+
     def update_country_field(self, brand_name):
         country = self.brand_country_map.get(brand_name, "Неизвестно")
         self.country_combobox.clear()
